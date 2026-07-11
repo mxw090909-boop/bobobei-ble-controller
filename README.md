@@ -7,9 +7,11 @@
 ## 包含内容
 
 - `index.html`：可在 Bluefy 中打开的浏览器 BLE 控制页面。
+- `supabase/schema.sql`：创建自己的设备表、命令队列和基础 RPC。
+- `supabase/bluefy_commands.sql`：创建 Bluefy 页面使用的远程控制函数。
 - `.gitignore`：避免把本地配置、缓存和 Netlify 状态文件提交进去。
 
-本仓库不包含 ESP32 固件、PlatformIO 工程、Wi-Fi 配置、Supabase 数据库 SQL，也不包含任何线上项目的真实 token。
+本仓库不包含 ESP32 固件、PlatformIO 工程、Wi-Fi 配置，也不包含任何线上项目的真实 token。
 
 ## 使用前配置
 
@@ -29,6 +31,16 @@ Supabase 远程命令监听是页面里的可选能力；如果只使用 Bluefy 
 ```text
 Bluefy -> Web Bluetooth -> SOSEXY
 ```
+
+如果要让页面接收 Supabase 里的远程命令，需要再配置自己的 Supabase：
+
+1. 新建自己的 Supabase 项目。
+2. 在 `supabase/schema.sql` 的示例设备记录里，替换设备 ID、设备 token、控制 token 和显示名称。
+3. 在 `supabase/bluefy_commands.sql` 里，把所有 `REPLACE_WITH_YOUR_DEVICE_ID` 替换成同一个设备 ID。
+4. 在 Supabase SQL Editor 中先执行 `schema.sql`，再执行 `bluefy_commands.sql`。
+5. 把同一套项目 URL、publishable/anon key、设备 ID 和设备 token 填进 `index.html`。
+
+两份 SQL 只负责 Supabase 命令队列和远程控制函数，不包含 ESP32；朋友使用自己的项目和自己的设备即可。
 
 ## 部署方式
 
