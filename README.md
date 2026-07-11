@@ -11,7 +11,7 @@
 - `supabase/bluefy_commands.sql`：创建 Bluefy 页面使用的远程控制函数。
 - `.gitignore`：避免把本地配置、缓存和 Netlify 状态文件提交进去。
 
-本仓库不包含 ESP32 固件、PlatformIO 工程、Wi-Fi 配置，也不包含任何线上项目的真实 token。
+仓库中的配置都是占位符，请替换成自己的项目和设备信息。
 
 ## 使用前配置
 
@@ -40,7 +40,7 @@ Bluefy -> Web Bluetooth -> SOSEXY
 4. 在 Supabase SQL Editor 中先执行 `schema.sql`，再执行 `bluefy_commands.sql`。
 5. 把同一套项目 URL、publishable/anon key、设备 ID 和设备 token 填进 `index.html`。
 
-两份 SQL 只负责 Supabase 命令队列和远程控制函数，不包含 ESP32；朋友使用自己的项目和自己的设备即可。
+两份 SQL 负责 Supabase 命令队列和远程控制函数。
 
 ## 部署方式
 
