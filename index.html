@@ -551,10 +551,12 @@
           log("[ble] notify", hex(new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength))));
         });
       } catch (e) { log("[ble] notify unavailable:", e.message || e); }
+      await writeBle(INIT_CMD, "init");
+      await sendStop();
+      await beginToySession();
       state.bleConnected = true;
       setUi();
-      await writeBle(INIT_CMD, "init");
-      log("[ble] connected and initialized");
+      log("[ble] connected, initialized, and zeroed");
       if (state.lossActive) {
         startListening();
         await requestWakeLock();
@@ -585,6 +587,15 @@
       if (text) { try { data=JSON.parse(text); } catch { data=text; } }
       if (!res.ok) throw new Error(`${name} failed: ${res.status} ${typeof data === "string" ? data : JSON.stringify(data)}`);
       return data;
+    }
+
+    async function beginToySession() {
+      const commandId = await rpc("begin_toy_session", {
+        p_device_id: DEVICE_ID,
+        p_device_token: DEVICE_TOKEN
+      });
+      log("[rpc] began BLE session; stale commands discarded; stop queued", commandId || "");
+      return commandId;
     }
 
     async function claimCommand(stopOnly=false) {

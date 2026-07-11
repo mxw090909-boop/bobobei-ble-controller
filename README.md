@@ -42,6 +42,8 @@ Bluefy -> Web Bluetooth -> SOSEXY
 
 两份 SQL 负责 Supabase 命令队列和远程控制函数。
 
+页面每次连接设备时，会先通过 `begin_toy_session()` 清理旧的 pending 指令并加入一条 STOP；初始化和清理完成后，才开始接收新的远程控制。
+
 ## 部署方式
 
 这是单个静态 HTML 页面，不需要安装依赖或执行构建。只要能提供 HTTPS 静态网页的服务都可以部署；Netlify 只是其中一个方便的例子。

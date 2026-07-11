@@ -188,13 +188,55 @@ begin
 end;
 $$;
 
+create or replace function public.begin_toy_session(
+  p_device_id text,
+  p_device_token text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_command_id uuid;
+begin
+  if not exists (
+    select 1 from public.toy_devices
+    where device_id = p_device_id
+      and device_token = p_device_token
+      and is_enabled = true
+  ) then
+    raise exception 'device not found or device token invalid';
+  end if;
+
+  delete from public.toy_commands
+  where device_id = p_device_id
+    and status = 'pending';
+
+  update public.toy_devices
+  set last_seen_at = now()
+  where device_id = p_device_id;
+
+  insert into public.toy_commands (device_id, payload)
+  values (
+    p_device_id,
+    jsonb_build_object('type', 'stop', 'source', 'bluefy', 'session_start', true)
+  )
+  returning id into v_command_id;
+
+  return v_command_id;
+end;
+$$;
+
 revoke execute on function public.enqueue_toy_command(text, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.claim_toy_command(text, text, boolean) from public, anon, authenticated;
 revoke execute on function public.ack_toy_command(text, text, uuid, text, text) from public, anon, authenticated;
+revoke execute on function public.begin_toy_session(text, text) from public, anon, authenticated;
 
 grant execute on function public.enqueue_toy_command(text, text, jsonb) to anon, authenticated;
 grant execute on function public.claim_toy_command(text, text, boolean) to anon, authenticated;
 grant execute on function public.ack_toy_command(text, text, uuid, text, text) to anon, authenticated;
+grant execute on function public.begin_toy_session(text, text) to anon, authenticated;
 
 insert into public.toy_devices (
   device_id,
