@@ -1,13 +1,13 @@
 # bobobei-ble-controller
 
-Sanitized reference bundle for the BLE controller, Netlify front-end, and Supabase-backed command flow.
+Sanitized reference bundle for the Bobobei Bluefy BLE controller.
 
-This repository keeps the deployable source in a de-personalized form:
+This repository contains:
 
-- `site/` contains the static front-end.
-- `netlify/functions/` contains the Netlify serverless proxy functions.
-- `netlify.toml` defines the Netlify publish and functions directories.
-- `elior-remote-touch-mvp/` contains the ESP32 / BLE / Supabase reference implementation.
-- `小窝前端完整源文件.html` is a local-readable mirror of the current front-end HTML.
+- `index.html`: the standalone Bluefy/Web Bluetooth control page.
+- `elior-remote-touch-mvp/`: the ESP32 firmware, PlatformIO settings, BLE protocol notes, and Supabase SQL command flow.
+- `.gitignore`: keeps local secrets, firmware build output, and Netlify state out of Git.
 
-All real deployment secrets, tokens, device IDs, and API credentials are replaced with placeholders.
+Before using the page, replace the four placeholders near the configuration block in `index.html` with values from your own Supabase project and your own device. Do not reuse anyone else's project, device token, or Wi-Fi credentials.
+
+The live Netlify page was used only as the UI reference. Its runtime values are not included here.

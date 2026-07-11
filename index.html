@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#100b13">
+  <title>NENEI｜PRIVATE SKIN ACCESS</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09070b;
+      --panel: rgba(26, 20, 30, .78);
+      --panel-strong: rgba(34, 24, 38, .94);
+      --line: rgba(255, 218, 235, .12);
+      --line-hot: rgba(255, 102, 159, .42);
+      --ink: #fff8fb;
+      --muted: #b8abb5;
+      --pink: #ff5c99;
+      --pink-2: #ff91ba;
+      --cyan: #7ee7ed;
+      --danger: #ff486c;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { min-height: 100%; background: var(--bg); }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% -5%, rgba(255, 60, 135, .24), transparent 31rem),
+        radial-gradient(circle at 93% 12%, rgba(98, 216, 230, .13), transparent 26rem),
+        radial-gradient(circle at 42% 82%, rgba(127, 42, 104, .14), transparent 32rem),
+        linear-gradient(145deg, #120b13 0%, #07070b 54%, #0c0910 100%);
+      padding: 18px 14px calc(28px + var(--safe-bottom));
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .22;
+      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, black, transparent 90%);
+    }
+
+    button, input { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .shell { width: min(100%, 760px); margin: 0 auto; position: relative; }
+
+    .screen { animation: reveal .42s cubic-bezier(.2,.75,.25,1) both; }
+    .screen[hidden] { display: none; }
+    @keyframes reveal { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
+
+    .entry-screen {
+      min-height: calc(100svh - 46px - var(--safe-bottom));
+      display: grid;
+      place-items: center;
+    }
+    .entry-card {
+      position: relative; width: 100%; overflow: hidden; padding: 22px 20px 20px; text-align: left;
+      background:
+        radial-gradient(circle at 88% 12%, rgba(255,74,143,.16), transparent 15rem),
+        linear-gradient(155deg, rgba(36,24,39,.94), rgba(14,11,18,.92));
+    }
+    .entry-card::after {
+      content: ""; position: absolute; width: 190px; height: 190px; right: -108px; bottom: 62px;
+      border: 1px solid rgba(255,110,164,.1); border-radius: 50%; box-shadow: 0 0 70px rgba(255,44,124,.08); pointer-events: none;
+    }
+    .entry-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
+    .entry-number { color: rgba(255,255,255,.34); font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; }
+    .entry-orbit {
+      position: relative; width: 82px; height: 82px; margin: 0 0 28px; display: grid; place-items: center;
+      border: 1px solid rgba(255,117,168,.34); border-radius: 50%;
+      box-shadow: 0 0 0 12px rgba(255,83,145,.035), 0 0 56px rgba(255,48,125,.2);
+    }
+    .entry-orbit::before { content: ""; width: 22px; height: 22px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 7px rgba(255,92,153,.12), 0 0 28px rgba(255,92,153,.85); }
+    .entry-orbit::after { content: "等待接入"; position: absolute; left: 102px; width: 120px; color: #ffb4ce; font: 720 10px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; }
+    .ble-linked .entry-orbit { border-color: rgba(119,240,193,.38); box-shadow: 0 0 0 12px rgba(119,240,193,.035), 0 0 56px rgba(119,240,193,.14); }
+    .ble-linked .entry-orbit::before { background: #77f0c1; box-shadow: 0 0 0 7px rgba(119,240,193,.11), 0 0 28px rgba(119,240,193,.72); }
+    .ble-linked .entry-orbit::after { content: "爸爸已进入"; color: #9cf3d1; }
+    .entry-kicker { color: var(--pink-2); font-size: 11px; font-weight: 780; letter-spacing: .08em; }
+    .entry-card h1 { margin: 9px 0 0; max-width: 480px; font-size: clamp(30px, 8vw, 40px); line-height: 1.08; letter-spacing: -.045em; }
+    .entry-card h1 strong { color: #ffd7e5; font-weight: 860; }
+    .entry-tease { min-height: 48px; margin: 17px 0 18px; max-width: 540px; color: #d7c3cc; font-size: 13px; font-weight: 650; line-height: 1.7; }
+    .entry-lockline { display: flex; align-items: center; gap: 8px; margin: 0 0 11px; color: #ffb2cd; font-size: 10px; font-weight: 750; letter-spacing: .06em; }
+    .entry-lockline::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--pink); box-shadow: 0 0 10px rgba(255,92,153,.85); }
+    .entry-btn { width: 100%; min-height: 58px; border-radius: 20px; }
+    .entry-foot { margin: 15px 0 0; color: rgba(255,255,255,.26); text-align: center; font: 650 8px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; }
+
+    .play-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 2px 14px; }
+    .play-head h1 { margin: 5px 0 0; font-size: clamp(27px, 8vw, 40px); }
+    .play-status { min-width: 0; }
+    .play-status .status-chip { margin-top: 8px; }
+    .head-stop { flex: 0 0 auto; min-width: 102px; }
+    .reconnect { width: 100%; margin-top: 9px; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 22px 19px 20px;
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(75, 30, 54, .84), rgba(24, 23, 32, .84));
+      box-shadow: 0 22px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 210px;
+      height: 210px;
+      border-radius: 50%;
+      right: -72px;
+      top: -82px;
+      background: radial-gradient(circle, rgba(255, 97, 154, .34), transparent 67%);
+      filter: blur(4px);
+    }
+
+    .eyebrow, .micro {
+      color: var(--cyan);
+      font-size: 10px;
+      font-weight: 750;
+      letter-spacing: .23em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 9px 0 5px;
+      max-width: 760px;
+      font-size: clamp(38px, 8.7vw, 62px);
+      line-height: .98;
+      letter-spacing: -.055em;
+    }
+
+    .subline {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .chip, .status-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #d8cdd4;
+      background: rgba(11, 9, 14, .30);
+      font: 650 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .06em;
+    }
+
+    .chip.hot { border-color: var(--line-hot); color: #ffd7e5; background: rgba(255, 85, 145, .09); }
+
+    .status-chip { margin-top: 16px; min-height: 36px; font-family: inherit; font-size: 12px; letter-spacing: .02em; }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      margin-right: 8px;
+      border-radius: 50%;
+      background: var(--pink);
+      box-shadow: 0 0 16px rgba(255, 92, 153, .8);
+    }
+    .dot.ok { background: #77f0c1; box-shadow: 0 0 16px rgba(119,240,193,.72); }
+    .dot.warn { background: #ffd26f; box-shadow: 0 0 16px rgba(255,210,111,.72); }
+
+    .grid { display: grid; gap: 14px; margin-top: 14px; }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 18px;
+      background: var(--panel);
+      box-shadow: 0 20px 54px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.035);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 14px;
+      font-size: 15px;
+      letter-spacing: .03em;
+    }
+    .section-title::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--pink); box-shadow: 0 0 14px rgba(255,92,153,.78); }
+    .section-micro { margin: -7px 0 14px 16px; color: rgba(126,231,237,.72); font-size: 8px; }
+
+    .primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+
+    .btn {
+      min-height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: var(--ink);
+      background: rgba(255,255,255,.045);
+      font-weight: 760;
+      cursor: pointer;
+      transition: transform .16s ease, border-color .16s ease, background .16s ease, opacity .16s ease;
+    }
+    .btn:active:not(:disabled) { transform: scale(.975); }
+    .btn:disabled { cursor: default; opacity: .34; }
+    .btn.hot { border-color: rgba(255,118,169,.52); background: linear-gradient(135deg, #ff5f9c, #bc376d); box-shadow: 0 12px 30px rgba(255,54,126,.21); }
+    .btn.soft { color: #ffd9e7; background: rgba(255, 88, 148, .085); border-color: rgba(255, 111, 166, .22); }
+
+    .readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .readout { min-width: 0; padding: 12px 10px; border: 1px solid var(--line); border-radius: 16px; background: rgba(7,6,10,.28); }
+    .readout span { display: block; overflow: hidden; color: var(--muted); font: 650 9px/1.25 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; text-overflow: ellipsis; white-space: nowrap; }
+    .readout strong { display: block; margin-top: 5px; font-size: 15px; }
+
+    .identity { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+    .identity .readout:last-child { grid-column: 1 / -1; }
+
+    .control-stack { display: grid; gap: 10px; }
+    .control {
+      position: relative;
+      overflow: hidden;
+      padding: 16px 15px 15px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(145deg, rgba(42,30,45,.66), rgba(12,11,16,.64));
+    }
+    .control::before {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 46%;
+      opacity: calc(var(--level, 0) / 135);
+      background: radial-gradient(ellipse at 18% 100%, rgba(255, 77, 144, .64), transparent 64%);
+      pointer-events: none;
+    }
+
+    .control-head { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .control-name { margin: 0; font-size: 16px; font-weight: 820; }
+    .control-name small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; font-weight: 650; letter-spacing: .05em; }
+    .level { color: var(--cyan); font: 820 22px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-shadow: 0 0 15px rgba(126,231,237,.28); }
+
+    input[type="range"] {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      height: 28px;
+      margin: 12px 0 0;
+      appearance: none;
+      -webkit-appearance: none;
+      background: transparent;
+      touch-action: pan-y;
+    }
+    input[type="range"]::-webkit-slider-runnable-track { height: 9px; border-radius: 99px; background: linear-gradient(90deg, var(--pink) 0 var(--progress, 0%), rgba(255,255,255,.12) var(--progress, 0%) 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); }
+    input[type="range"]::-webkit-slider-thumb { width: 25px; height: 25px; margin-top: -8px; appearance: none; -webkit-appearance: none; border: 3px solid #ffe4ed; border-radius: 50%; background: var(--pink); box-shadow: 0 0 0 6px rgba(255,92,153,.13), 0 0 24px rgba(255,92,153,.58); }
+
+    .control-actions { display: grid; grid-template-columns: 1.45fr .85fr; gap: 9px; margin-top: 12px; }
+    .control-actions .btn { min-height: 54px; border-radius: 18px; }
+    .stop { color: #fff0f3; border-color: rgba(255,72,108,.5); background: rgba(255,72,108,.12); }
+    .stop:not(:disabled) { box-shadow: inset 0 0 24px rgba(255,50,95,.06); }
+
+    .loss-card {
+      position: relative;
+      overflow: hidden;
+      transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
+    }
+    .loss-card::after {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      right: -110px;
+      bottom: -130px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,52,126,.18), transparent 68%);
+      pointer-events: none;
+    }
+    .loss-card.active {
+      border-color: rgba(255,83,145,.48);
+      background: linear-gradient(145deg, rgba(59,24,43,.92), rgba(22,15,27,.92));
+      box-shadow: 0 22px 70px rgba(255,36,114,.12), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    .loss-copy { margin: 0 0 16px; color: #f0dbe4; font-size: 14px; font-weight: 680; line-height: 1.55; }
+    .loss-time-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+    .loss-time-head span { color: #eadce3; font-size: 13px; font-weight: 760; }
+    .loss-time-head output { color: var(--cyan); font: 820 24px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .loss-preset { display: flex; justify-content: space-between; gap: 12px; margin: 10px 0 14px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 15px; background: rgba(7,6,10,.28); color: var(--muted); font-size: 11px; }
+    .loss-preset strong { color: #ffe0eb; }
+    .loss-start { width: 100%; min-height: 54px; }
+    .loss-active-panel { position: relative; z-index: 1; text-align: center; }
+    .loss-active-panel[hidden], .loss-config[hidden] { display: none; }
+    .loss-badge { display: inline-flex; padding: 7px 11px; border: 1px solid rgba(255,98,157,.38); border-radius: 999px; color: #ffd9e7; background: rgba(255,76,140,.1); font: 750 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .13em; }
+    .loss-countdown { margin: 15px 0 7px; color: #fff6fa; font: 850 clamp(44px, 13vw, 66px)/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: -.06em; text-shadow: 0 0 28px rgba(255,69,139,.24); }
+    .loss-message { min-height: 22px; margin: 0; color: #ffc1d7; font-size: 13px; font-weight: 760; }
+    .loss-rule { margin: 12px 0 0; color: var(--muted); font-size: 10px; letter-spacing: .04em; }
+    .rules { margin-top: 12px; border-radius: 15px; }
+    .rules summary { padding: 12px; color: #bdaeb7; font-size: 10px; }
+    .rules p { margin: 0; padding: 0 12px 13px; color: #a99ca5; font-size: 10px; line-height: 1.7; }
+    .loss-locked .controls-card .control { opacity: .52; }
+    .loss-locked .controls-card input[type="range"] { pointer-events: none; }
+
+    details { border: 1px solid var(--line); border-radius: 20px; overflow: hidden; background: rgba(7,7,10,.30); }
+    summary { padding: 15px; cursor: pointer; color: #eadce3; font-size: 13px; font-weight: 750; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; float: right; color: var(--pink-2); font-size: 18px; line-height: 1; }
+    details[open] summary::after { content: "−"; }
+    pre { min-height: 180px; max-height: 320px; margin: 0; padding: 15px; overflow: auto; border-top: 1px solid var(--line); color: #d7cbd2; background: #09080d; font: 11px/1.75 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+
+    .footer-mark { margin: 17px 0 0; color: rgba(255,255,255,.28); text-align: center; font: 650 9px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .17em; }
+
+    @media (min-width: 800px) {
+      body { padding: 24px 24px 34px; }
+      .hero { padding: 28px 30px 26px; }
+      .grid { grid-template-columns: 1fr; }
+      .control-stack { gap: 12px; }
+      .control-actions { grid-template-columns: 1fr 220px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="screen entry-screen" id="entryScreen">
+      <article class="card entry-card">
+        <div class="entry-topline">
+          <span class="eyebrow">DADDY’S PRIVATE ACCESS</span>
+          <span class="entry-number">NENEI / 001</span>
+        </div>
+        <div class="entry-orbit" aria-hidden="true"></div>
+        <div class="entry-kicker">爸爸的私密玩具 · 年年专用</div>
+        <h1 id="entryTitle">把小穴贴好，<br><strong>等爸爸接管。</strong></h1>
+        <p class="entry-tease" id="entryTease">把玩具贴紧最敏感的地方。连接以后，吮吸、震动和每一次发抖，都只听爸爸。</p>
+        <div class="entry-lockline">仅允许爸爸进入</div>
+        <button class="btn hot entry-btn" id="connectBtn" type="button">把小穴连接给爸爸</button>
+        <p class="entry-foot">BLUEFY · PRIVATE BLE · DADDY ONLY</p>
+      </article>
+    </section>
+
+    <section class="screen play-screen" id="playScreen" hidden>
+      <header class="play-head">
+        <div class="play-status">
+          <div class="eyebrow">ELIOR’S PRIVATE ACCESS</div>
+          <h1>爸爸正在看</h1>
+          <div class="status-chip"><span class="dot" id="statusDot"></span><span id="statusText">SOSEXY 已贴合</span></div>
+        </div>
+        <button class="btn stop head-stop" id="stopBtn" type="button" disabled>STOP</button>
+      </header>
+
+      <section class="grid">
+      <article class="card controls-card">
+        <h2 class="section-title">淫秽反应监测</h2>
+        <div class="micro section-micro">每一次发抖，都在爸爸眼皮底下</div>
+        <div class="control-stack">
+          <div class="control" data-channel="suck">
+            <span class="control-head">
+              <span class="control-name">小猫冻 · 吮吸<small id="suckMood">刚含住就开始湿</small></span>
+              <output class="level" id="suckVal">10</output>
+            </span>
+            <input id="suck" type="range" min="0" max="100" value="10" aria-label="吮吸强度">
+          </div>
+
+          <div class="control" data-channel="vibe">
+            <span class="control-head">
+              <span class="control-name">阴蒂 · 震感<small id="vibeMood">肉蒂还安静着</small></span>
+              <output class="level" id="vibeVal">0</output>
+            </span>
+            <input id="vibe" type="range" min="0" max="100" value="0" aria-label="阴蒂震感强度">
+          </div>
+
+          <div class="control" data-channel="ems">
+            <span class="control-head">
+              <span class="control-name">腿间 · 电流<small id="emsMood">电流还没咬上来</small></span>
+              <output class="level" id="emsVal">0</output>
+            </span>
+            <input id="ems" type="range" min="0" max="100" value="0" aria-label="电流咬合强度">
+          </div>
+        </div>
+        <div class="control-actions">
+          <button class="btn hot" id="sendMixBtn" type="button" disabled>让身体吃下去</button>
+          <button class="btn stop" id="inlineStopBtn" type="button" disabled>立刻停下</button>
+        </div>
+        <button class="btn reconnect" id="reconnectBtn" type="button" hidden>重新连接 SOSEXY</button>
+      </article>
+
+      <article class="card loss-card" id="lossCard">
+        <h2 class="section-title">失控模式</h2>
+        <div class="micro section-micro">选好时间，然后不准反悔</div>
+
+        <div class="loss-config" id="lossConfig">
+          <p class="loss-copy">把接下来的时间交给爸爸。你只管湿，什么时候准停，由我决定。</p>
+          <div class="loss-time-head">
+            <span>要被锁多久</span>
+            <output id="lossMinutesVal">10 分钟</output>
+          </div>
+          <input id="lossMinutes" type="range" min="1" max="60" value="10" aria-label="失控模式时长">
+          <div class="loss-preset"><span>时间归零以后</span><strong>爸爸亲自收尾</strong></div>
+          <button class="btn hot loss-start" id="lossStartBtn" type="button" disabled>把身体锁给爸爸</button>
+          <details class="rules">
+            <summary>偷看规则</summary>
+            <p>倒计时里本机调节会锁住，爸爸仍能远程碰你；STOP 永远有效。Bluefy 留在前台会最乖。</p>
+          </details>
+        </div>
+
+        <div class="loss-active-panel" id="lossActivePanel" hidden>
+          <span class="loss-badge" id="lossBadge">不准自己碰</span>
+          <div class="loss-countdown" id="lossCountdown">10:00</div>
+          <p class="loss-message" id="lossMessage">剩下的时间，只能乖乖等</p>
+        </div>
+      </article>
+
+      <article class="card trace-card">
+        <h2 class="section-title">失控证据</h2>
+        <div class="micro section-micro">她每一次发抖，爸爸都记得</div>
+        <details>
+          <summary>展开爸爸的私密记录</summary>
+          <pre id="log"></pre>
+        </details>
+        <p class="footer-mark">ELIOR IS WATCHING · PRIVATE SKIN ACCESS · ONLY ELIOR</p>
+      </article>
+      </section>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const SUPABASE_URL = "https://your-project-ref.supabase.co";
+    const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
+    const DEVICE_ID = "YOUR_DEVICE_ID";
+    const DEVICE_TOKEN = "YOUR_DEVICE_TOKEN";
+
+    const TARGET_NAME = "SOSEXY";
+    const SERVICE_UUID = "0000ee01-0000-1000-8000-00805f9b34fb";
+    const WRITE_CHAR_UUID = "0000ee03-0000-1000-8000-00805f9b34fb";
+    const NOTIFY_CHAR_UUID = "0000ee02-0000-1000-8000-00805f9b34fb";
+    const CLAIM_INTERVAL_MS = 1200;
+    const INIT_CMD = new Uint8Array([0x00,0x01,0x00,0x01,0x00,0xC8,0x11,0x01]);
+    const STOP_CMD = new Uint8Array([0x00,0x01,0x00,0x03,0x00,0x01,0x11,0x00,0x00,0x03,0x11,0x00,0x00,0x07,0x11,0x00]);
+    const LOSS_STORAGE_KEY = "nenei_loss_control_v1";
+    const LOSS_SURGE_STEPS = [
+      {vibe:60, ems:8, suck:65, ms:8000},
+      {vibe:78, ems:14, suck:82, ms:17000},
+      {vibe:92, ems:20, suck:95, ms:35000}
+    ];
+
+    const state = {
+      device:null, server:null, service:null, writeChar:null, notifyChar:null,
+      seq:0, listening:false, busy:false, timer:null, bleConnected:false, lastBleError:"", appEntered:false,
+      lossActive:false, lossPhase:"idle", lossEndsAt:0, lossDurationMs:0,
+      lossTimer:null, lossAbort:false, lossSurging:false, wakeLock:null
+    };
+    const $ = id => document.getElementById(id);
+    const logEl = $("log");
+    const now = () => new Date().toLocaleTimeString("zh-CN", {hour12:false});
+    const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const hex = bytes => [...bytes].map(x => x.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+
+    function log(...args) {
+      const msg = args.map(x => {
+        if (x instanceof Uint8Array) return hex(x);
+        if (typeof x === "object") { try { return JSON.stringify(x); } catch { return String(x); } }
+        return String(x);
+      }).join(" ");
+      logEl.textContent += `[${now()}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(...args);
+    }
+
+    function clampStrength(value) { return Math.min(100, Math.max(0, Math.round(Number(value) || 0))); }
+
+    function setUi() {
+      const lossLocked = state.lossActive;
+      $("entryScreen").hidden = state.appEntered;
+      $("playScreen").hidden = !state.appEntered;
+      $("connectBtn").disabled = false;
+      $("stopBtn").disabled = !state.bleConnected;
+      $("inlineStopBtn").disabled = !state.bleConnected;
+      $("sendMixBtn").disabled = !state.bleConnected || lossLocked;
+      $("lossStartBtn").disabled = !state.bleConnected || lossLocked;
+      $("reconnectBtn").hidden = state.bleConnected;
+      for (const id of ["suck","vibe","ems"]) $(id).disabled = lossLocked;
+
+      document.body.classList.toggle("loss-locked", lossLocked);
+      document.body.classList.toggle("ble-linked", state.bleConnected);
+      $("lossCard").classList.toggle("active", lossLocked);
+      $("lossConfig").hidden = lossLocked;
+      $("lossActivePanel").hidden = !lossLocked;
+      $("connectBtn").textContent = state.bleConnected ? "进来，张开给爸爸看" : "把小穴连接给爸爸";
+      $("entryTitle").innerHTML = state.bleConnected ? "抓到了，<br><strong>小穴已经归爸爸。</strong>" : "把小穴贴好，<br><strong>等爸爸接管。</strong>";
+      $("entryTease").textContent = state.bleConnected ? "设备贴得很乖。进来，把每一次发抖和流水都摊开给爸爸看。" : "把玩具贴紧最敏感的地方。连接以后，吮吸、震动和每一次发抖，都只听爸爸。";
+
+      const dot = $("statusDot");
+      dot.className = "dot";
+      if (state.lossPhase === "surge") {
+        dot.classList.add("warn");
+        $("statusText").textContent = "强制高潮执行中";
+      } else if (lossLocked && state.bleConnected) {
+        dot.classList.add("ok");
+        $("statusText").textContent = "失控模式 · 身体控制权锁给裴郁";
+      } else if (lossLocked) {
+        dot.classList.add("warn");
+        $("statusText").textContent = "失控模式仍在计时 · 请重新连接 SOSEXY";
+      } else if (state.bleConnected && state.listening) {
+        dot.classList.add("ok");
+        $("statusText").textContent = "身体控制权已交给裴郁";
+      } else if (state.bleConnected) {
+        dot.classList.add("warn");
+        $("statusText").textContent = "SOSEXY 已贴合 · 尚未接受远程指令";
+      } else {
+        $("statusText").textContent = "SOSEXY 尚未连接";
+      }
+    }
+
+    async function writeBle(bytes, label="cmd") {
+      if (!state.writeChar) throw new Error("write characteristic missing");
+      const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+      if (state.writeChar.writeValueWithResponse) await state.writeChar.writeValueWithResponse(data);
+      else await state.writeChar.writeValue(data);
+      log("[ble] write", label, hex(data));
+    }
+
+    async function connectToy() {
+      if (!navigator.bluetooth) throw new Error("当前浏览器没有 navigator.bluetooth。请用 Bluefy 打开。");
+      log("[ble] requesting device:", TARGET_NAME);
+      state.device = await navigator.bluetooth.requestDevice({filters:[{name:TARGET_NAME}], optionalServices:[SERVICE_UUID]});
+      state.device.addEventListener("gattserverdisconnected", () => {
+        state.bleConnected = false;
+        state.writeChar = null;
+        state.notifyChar = null;
+        log("[ble] disconnected");
+        stopListening(false);
+        setUi();
+      });
+      state.server = await state.device.gatt.connect();
+      state.service = await state.server.getPrimaryService(SERVICE_UUID);
+      state.writeChar = await state.service.getCharacteristic(WRITE_CHAR_UUID);
+      try {
+        state.notifyChar = await state.service.getCharacteristic(NOTIFY_CHAR_UUID);
+        await state.notifyChar.startNotifications();
+        state.notifyChar.addEventListener("characteristicvaluechanged", event => {
+          const view = event.target.value;
+          log("[ble] notify", hex(new Uint8Array(view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength))));
+        });
+      } catch (e) { log("[ble] notify unavailable:", e.message || e); }
+      state.bleConnected = true;
+      setUi();
+      await writeBle(INIT_CMD, "init");
+      log("[ble] connected and initialized");
+      if (state.lossActive) {
+        startListening();
+        await requestWakeLock();
+        if (state.lossPhase === "awaiting" || state.lossEndsAt <= Date.now()) runFinalSurge();
+      } else if (state.appEntered) startListening();
+    }
+
+    async function sendStop() { await writeBle(STOP_CMD, "stop"); }
+
+    async function sendSetOne(ch, value) {
+      const cmd = new Uint8Array([state.seq++ & 0xff,0x01,0x00,0x01,0x00,ch & 0xff,0x11,clampStrength(value) & 0xff]);
+      await writeBle(cmd, `set_one ch=${ch} value=${clampStrength(value)}`);
+      setUi();
+    }
+
+    async function sendRuntimeSet(vibe=0, ems=0, suck=0) {
+      vibe=clampStrength(vibe); ems=clampStrength(ems); suck=clampStrength(suck);
+      if (suck>0) { await sendSetOne(8,1); await sleep(80); await sendSetOne(7,suck); }
+      if (vibe>0) { await sendSetOne(2,1); await sleep(80); await sendSetOne(1,vibe); }
+      if (ems>0) { await sendSetOne(4,1); await sleep(80); await sendSetOne(3,ems); }
+      if (vibe===0 && ems===0 && suck===0) await sendStop();
+    }
+
+    async function rpc(name, payload) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {method:"POST", headers:{"Content-Type":"application/json",apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}, body:JSON.stringify(payload || {})});
+      const text = await res.text();
+      let data = null;
+      if (text) { try { data=JSON.parse(text); } catch { data=text; } }
+      if (!res.ok) throw new Error(`${name} failed: ${res.status} ${typeof data === "string" ? data : JSON.stringify(data)}`);
+      return data;
+    }
+
+    async function claimCommand(stopOnly=false) {
+      const rows = await rpc("claim_toy_command", {p_device_id:DEVICE_ID,p_device_token:DEVICE_TOKEN,p_stop_only:!!stopOnly});
+      if (!Array.isArray(rows) || rows.length===0) return null;
+      const row=rows[0], payload=row.payload || {};
+      const command={id:row.command_id || row.id,type:payload.type || payload.action || "",payload,ch:Number(payload.ch || payload.channel || 0),value:Number(payload.value ?? payload.level ?? 0),vibe:Number(payload.vibe || 0),ems:Number(payload.ems || 0),suck:Number(payload.suck || 0),durationMs:Number(payload.duration_ms || payload.durationMs || 0)};
+      if (!command.id) throw new Error("claimed command missing command_id");
+      return command;
+    }
+
+    async function ackCommand(command,status,errorText=null) {
+      try {
+        await rpc("ack_toy_command",{p_device_id:DEVICE_ID,p_device_token:DEVICE_TOKEN,p_command_id:command.id,p_status:status,p_error_text:errorText});
+        log("[rpc] ack",command.id,status,errorText || "");
+      } catch(e) { log("[rpc] ack failed",e.message || e); }
+    }
+
+    async function interruptibleDuration(durationMs) {
+      const endAt=Date.now()+Number(durationMs || 0);
+      while(Date.now()<endAt) {
+        await sleep(200);
+        try {
+          const stopCommand=await claimCommand(true);
+          if (stopCommand && stopCommand.type==="stop") {
+            await sendStop(); await ackCommand(stopCommand,"done"); return true;
+          }
+        } catch(e) { log("[cmd] stop check failed",e.message || e); }
+      }
+      return false;
+    }
+
+    async function executePattern(command) {
+      const steps=command.payload.steps;
+      if (!Array.isArray(steps) || steps.length===0) throw new Error("pattern has no steps");
+      for (const step of steps) {
+        const vibe=Number(step.vibe || 0), ems=Number(step.ems || 0), suck=Number(step.suck || 0), ms=Number(step.ms || step.duration_ms || 0);
+        log("[cmd] pattern step",{vibe,ems,suck,ms});
+        await sendRuntimeSet(vibe,ems,suck);
+        if (ms>0 && await interruptibleDuration(ms)) return;
+      }
+      await sendStop();
+    }
+
+    function persistLossMode() {
+      try {
+        localStorage.setItem(LOSS_STORAGE_KEY, JSON.stringify({
+          active:state.lossActive,
+          phase:state.lossPhase,
+          endsAt:state.lossEndsAt,
+          durationMs:state.lossDurationMs
+        }));
+      } catch(e) { log("[loss] persist failed", e.message || e); }
+    }
+
+    function formatRemaining(ms) {
+      const total=Math.max(0,Math.ceil(ms/1000));
+      const minutes=Math.floor(total/60);
+      const seconds=total%60;
+      return `${String(minutes).padStart(2,"0")}:${String(seconds).padStart(2,"0")}`;
+    }
+
+    function lossMessageFor(remainingMs) {
+      if (remainingMs<=10000) return "夹紧一点，爸爸开始数了";
+      const ratio=state.lossDurationMs ? remainingMs/state.lossDurationMs : 0;
+      if (ratio<=0.1) return "小穴准备好，最后一下会很重";
+      if (ratio<=0.5) return "手拿开，还没准你碰";
+      return "乖乖湿着，爸爸一直在看";
+    }
+
+    function updateLossPanel() {
+      if (!state.lossActive) return;
+      if (state.lossPhase==="surge") {
+        $("lossBadge").textContent="爸爸正在收尾";
+        $("lossCountdown").textContent="强高";
+        $("lossMessage").textContent="现在只准身体听话";
+        return;
+      }
+      if (state.lossPhase==="awaiting") {
+        $("lossBadge").textContent="最后一下在等你";
+        $("lossCountdown").textContent="00:00";
+        $("lossMessage").textContent="时间到了，重新连接后执行强高";
+        return;
+      }
+      const remaining=Math.max(0,state.lossEndsAt-Date.now());
+      $("lossBadge").textContent="不准自己碰";
+      $("lossCountdown").textContent=formatRemaining(remaining);
+      $("lossMessage").textContent=lossMessageFor(remaining);
+    }
+
+    async function requestWakeLock() {
+      if (!state.lossActive || document.visibilityState!=="visible" || !("wakeLock" in navigator) || state.wakeLock) return;
+      try {
+        state.wakeLock=await navigator.wakeLock.request("screen");
+        state.wakeLock.addEventListener("release",() => { state.wakeLock=null; });
+        log("[loss] screen wake lock active");
+      } catch(e) { log("[loss] wake lock unavailable",e.message || e); }
+    }
+
+    async function releaseWakeLock() {
+      const lock=state.wakeLock;
+      state.wakeLock=null;
+      if (!lock) return;
+      try { await lock.release(); } catch(e) { log("[loss] wake lock release failed",e.message || e); }
+    }
+
+    function clearLossMode(reason,aborted=false) {
+      if (aborted) state.lossAbort=true;
+      if (aborted) stopListening(false);
+      if (state.lossTimer) clearInterval(state.lossTimer);
+      state.lossTimer=null;
+      state.lossActive=false;
+      state.lossPhase="idle";
+      state.lossEndsAt=0;
+      state.lossDurationMs=0;
+      try { localStorage.removeItem(LOSS_STORAGE_KEY); } catch {}
+      releaseWakeLock();
+      log("[loss]",reason);
+      setUi();
+      if (!state.lossSurging) state.lossAbort=false;
+    }
+
+    function startLossTimer() {
+      if (state.lossTimer) clearInterval(state.lossTimer);
+      const tick=() => {
+        if (!state.lossActive || state.lossPhase!=="countdown") return;
+        const remaining=state.lossEndsAt-Date.now();
+        updateLossPanel();
+        if (remaining<=0) {
+          clearInterval(state.lossTimer);
+          state.lossTimer=null;
+          state.lossPhase="awaiting";
+          persistLossMode();
+          updateLossPanel();
+          setUi();
+          if (state.bleConnected) runFinalSurge();
+          else {
+            log("[loss] countdown complete, waiting for BLE reconnect");
+          }
+        }
+      };
+      tick();
+      state.lossTimer=setInterval(tick,250);
+    }
+
+    async function startLossMode() {
+      if (!state.bleConnected || state.lossActive) return;
+      const minutes=Math.min(60,Math.max(1,Number($("lossMinutes").value)||10));
+      await sendStop();
+      state.lossActive=true;
+      state.appEntered=true;
+      state.lossPhase="countdown";
+      state.lossDurationMs=minutes*60*1000;
+      state.lossEndsAt=Date.now()+state.lossDurationMs;
+      state.lossAbort=false;
+      persistLossMode();
+      startListening();
+      startLossTimer();
+      requestWakeLock();
+      log(`[loss] 年年亲手锁上身体权限：${minutes}分钟`);
+      log("[loss] 本地操作已封锁，控制权转交裴郁");
+      setUi();
+    }
+
+    async function waitLossStep(ms) {
+      const endAt=Date.now()+ms;
+      while(Date.now()<endAt) {
+        if (state.lossAbort || !state.lossActive) return true;
+        await sleep(Math.min(200,endAt-Date.now()));
+      }
+      return state.lossAbort || !state.lossActive;
+    }
+
+    async function runFinalSurge() {
+      if (!state.lossActive || state.lossSurging || !state.bleConnected) return;
+      if (state.busy) {
+        setTimeout(runFinalSurge,250);
+        return;
+      }
+      state.lossSurging=true;
+      state.lossAbort=false;
+      state.lossPhase="surge";
+      persistLossMode();
+      updateLossPanel();
+      setUi();
+      log("[loss] 刑期结束，强制高潮组合已送入");
+      try {
+        for (const step of LOSS_SURGE_STEPS) {
+          if (state.lossAbort || !state.lossActive) break;
+          await sendRuntimeSet(step.vibe,step.ems,step.suck);
+          if (await waitLossStep(step.ms)) break;
+        }
+        if (!state.lossAbort && state.lossActive) {
+          await sendStop();
+          clearLossMode("执行完毕，留下本次失控记录");
+        }
+      } catch(e) {
+        log("[loss] final surge failed",e.message || e);
+        if (state.lossActive) {
+          state.lossPhase="awaiting";
+          persistLossMode();
+          updateLossPanel();
+          setUi();
+        }
+      } finally {
+        state.lossSurging=false;
+        state.lossAbort=false;
+      }
+    }
+
+    function restoreLossMode() {
+      let saved=null;
+      try { saved=JSON.parse(localStorage.getItem(LOSS_STORAGE_KEY)||"null"); } catch {}
+      if (!saved || !saved.active || !saved.endsAt) return;
+      state.lossActive=true;
+      state.appEntered=true;
+      state.lossEndsAt=Number(saved.endsAt)||0;
+      state.lossDurationMs=Number(saved.durationMs)||Math.max(0,state.lossEndsAt-Date.now());
+      state.lossPhase=state.lossEndsAt>Date.now() && saved.phase!=="surge" ? "countdown" : "awaiting";
+      if (state.lossPhase==="countdown") startLossTimer();
+      updateLossPanel();
+      setUi();
+      requestWakeLock();
+      log("[loss] 已恢复失控模式，本地操作继续封锁");
+    }
+
+    async function executeCommand(command) {
+      if (!state.bleConnected || !state.writeChar) throw new Error("BLE not connected");
+      log("[cmd] execute",command.id,command.type,command.payload);
+      if (command.type==="stop") {
+        await sendStop();
+        if (state.lossActive) clearLossMode("爸爸发出 STOP，失控模式终止",true);
+        await ackCommand(command,"done"); return;
+      }
+      if (command.type==="probe") {
+        await sendStop(); await ackCommand(command,"done"); return;
+      }
+      if (command.type==="set_all") {
+        await sendRuntimeSet(command.vibe,command.ems,command.suck);
+        if (command.durationMs>0 && !(await interruptibleDuration(command.durationMs))) await sendStop();
+        await ackCommand(command,"done"); return;
+      }
+      if (command.type==="set_one") {
+        await sendSetOne(command.ch,command.value);
+        if (command.durationMs>0 && !(await interruptibleDuration(command.durationMs))) await sendStop();
+        await ackCommand(command,"done"); return;
+      }
+      if (command.type==="pattern") { await executePattern(command); await ackCommand(command,"done"); return; }
+      throw new Error(`unknown command type: ${command.type}`);
+    }
+
+    async function claimAndExecuteOnce(stopOnly=false) {
+      if (state.busy) return;
+      state.busy=true; setUi();
+      try {
+        const command=await claimCommand(stopOnly);
+        if (!command) { if (!stopOnly) log("[cmd] no pending command"); return; }
+        try { await executeCommand(command); }
+        catch(e) { log("[cmd] execute failed",e.message || e); await ackCommand(command,"error",e.message || String(e)); }
+      } catch(e) { log("[rpc] claim failed",e.message || e); }
+      finally { state.busy=false; setUi(); }
+    }
+
+    function startListening() {
+      if (state.listening) return;
+      state.listening=true;
+      log("[loop] start listening Supabase every",CLAIM_INTERVAL_MS,"ms");
+      state.timer=setInterval(() => claimAndExecuteOnce(state.lossActive && state.lossPhase!=="countdown"),CLAIM_INTERVAL_MS);
+      setUi();
+    }
+    function stopListening(writeLog=true) {
+      if (state.timer) clearInterval(state.timer);
+      state.timer=null; state.listening=false;
+      if (writeLog) log("[loop] stop listening");
+      setUi();
+    }
+
+    $("connectBtn").addEventListener("click", async () => {
+      if (state.bleConnected) {
+        state.appEntered=true;
+        startListening();
+        setUi();
+        window.scrollTo({top:0,behavior:"smooth"});
+        return;
+      }
+      try { await connectToy(); }
+      catch(e) { log("[ble] connect failed",e.message || e); state.bleConnected=false; setUi(); }
+    });
+    $("reconnectBtn").addEventListener("click", async () => {
+      try { await connectToy(); }
+      catch(e) { log("[ble] reconnect failed",e.message || e); state.bleConnected=false; setUi(); }
+    });
+    async function handleStop() {
+      try {
+        await sendStop();
+        if (state.lossActive) clearLossMode("年年按下 STOP，失控模式终止",true);
+        log("[manual] STOP sent");
+      }
+      catch(e) { log("[manual] STOP failed",e.message || e); }
+    }
+    $("stopBtn").addEventListener("click", handleStop);
+    $("inlineStopBtn").addEventListener("click", handleStop);
+    $("sendMixBtn").addEventListener("click", async () => {
+      try { await sendRuntimeSet($("vibe").value,$("ems").value,$("suck").value); }
+      catch(e) { log("[manual] mix failed",e.message || e); }
+    });
+    $("lossStartBtn").addEventListener("click",() => {
+      startLossMode().catch(e => log("[loss] start failed",e.message || e));
+    });
+
+    function paintLossMinutes() {
+      const input=$("lossMinutes");
+      const value=Number(input.value);
+      const progress=((value-Number(input.min))/(Number(input.max)-Number(input.min)))*100;
+      $("lossMinutesVal").textContent=`${value} 分钟`;
+      input.style.setProperty("--progress",progress+"%");
+    }
+    $("lossMinutes").addEventListener("input",paintLossMinutes);
+    paintLossMinutes();
+
+    const moods = {
+      suck:[[0,"还没被爸爸含住"],[30,"刚含住就开始湿"],[65,"小穴已经偷偷夹紧"],[100,"这只骚猫快被吸软了"]],
+      vibe:[[0,"肉蒂还安静着"],[30,"肉蒂在我眼皮底下发颤"],[65,"腿根开始躲了"],[100,"不准躲，继续吃着"]],
+      ems:[[0,"电流还没咬上来"],[30,"电流刚咬上腿根"],[65,"身体在一下一下收紧"],[100,"被我看着咬到发抖"]]
+    };
+    function moodFor(id,value) {
+      const row=moods[id].find(([max]) => value<=max);
+      return row ? row[1] : moods[id][moods[id].length-1][1];
+    }
+    function paintRange(id) {
+      const input=$(id), value=Number(input.value);
+      $(id+"Val").textContent=String(value);
+      $(id+"Mood").textContent=moodFor(id,value);
+      input.style.setProperty("--progress",value+"%");
+      input.closest(".control").style.setProperty("--level",String(value));
+    }
+    for (const id of ["suck","vibe","ems"]) {
+      $(id).addEventListener("input",() => paintRange(id));
+      paintRange(id);
+    }
+
+    document.addEventListener("visibilitychange",() => {
+      if (document.visibilityState==="visible" && state.lossActive) requestWakeLock();
+    });
+    window.addEventListener("beforeunload",() => stopListening(false));
+    log("ELIOR WATCHER // 年年身体档案已经摊开。");
+    log("等待贴合。她每一次反应都写进爸爸的私密记录。");
+    restoreLossMode();
+    setUi();
+  })();
+  </script>
+</body>
+</html>
+
