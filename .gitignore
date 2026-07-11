@@ -1,0 +1,45 @@
+# Local runtime and database files
+.runtime/
+**/.runtime/
+*.sqlite
+*.sqlite3
+*.db
+*.db-*
+
+# ChatGPT exports, backups, and large local archives
+conversations*.zip
+*.zip
+archive_backup_*.json
+*.backup
+*.bak
+
+# Temporary work folders
+.tmp*/
+_tmp*/
+tmp/
+temp/
+.codex-tg-attachments/
+.tmp-codex-tg-vps-package/
+.tmp-cyberboss-inspect/
+.tmp-tests/
+.tmp-timeline-for-agent-inspect/
+
+# Local deploy/cache folders
+.netlify/
+.netlify-deploy-*/
+node_modules/
+
+# Local screenshots and smoke-test artifacts
+*.png
+!site/*.png
+live-*.png
+archive-smoke*.png
+
+# Logs
+*.log
+*.out
+
+# OS/editor
+.DS_Store
+Thumbs.db
+

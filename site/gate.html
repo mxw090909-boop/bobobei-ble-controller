@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#f8fafc">
+  <title>Private Gate</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --ink: #1f2937;
+      --muted: #64748b;
+      --line: rgba(148, 163, 184, 0.35);
+      --panel: rgba(255, 255, 255, 0.82);
+      --accent: #334155;
+      --accent-ink: #ffffff;
+      --bg1: #f8fafc;
+      --bg2: #e7edf3;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.9), transparent 32%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      width: min(100%, 360px);
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(18px);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 1.25;
+      letter-spacing: 0;
+    }
+    p {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    input[type="password"] {
+      width: 100%;
+      height: 46px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+    }
+    input[type="password"]:focus {
+      border-color: rgba(51, 65, 85, 0.72);
+      box-shadow: 0 0 0 4px rgba(51, 65, 85, 0.10);
+    }
+    button {
+      width: 100%;
+      height: 46px;
+      margin-top: 14px;
+      border: 0;
+      border-radius: 12px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:active { transform: translateY(1px); }
+    .error {
+      display: none;
+      margin: 12px 0 0;
+      color: #b91c1c;
+      font-size: 13px;
+    }
+    body[data-error="1"] .error { display: block; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #e5e7eb;
+        --muted: #94a3b8;
+        --line: rgba(148, 163, 184, 0.24);
+        --panel: rgba(15, 23, 42, 0.76);
+        --accent: #e5e7eb;
+        --accent-ink: #111827;
+        --bg1: #0f172a;
+        --bg2: #1e293b;
+      }
+      input[type="password"] {
+        background: rgba(15, 23, 42, 0.66);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Private Archive</h1>
+    <p>这扇门只认熟悉的设备。登录一次后，会在这台设备上长期记住。</p>
+    <form method="post" action="/__gate_login">
+      <input id="returnTo" type="hidden" name="return_to" value="/">
+      <label for="password">访问口令</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+      <button type="submit">进入</button>
+      <div class="error">口令不对，再试一次。</div>
+    </form>
+  </main>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('return_to') || '/';
+    document.getElementById('returnTo').value = returnTo.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/';
+    document.body.dataset.error = params.get('error') === '1' ? '1' : '0';
+  </script>
+</body>
+</html>

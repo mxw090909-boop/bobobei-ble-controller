@@ -1,0 +1,12 @@
+[build]
+  publish = "site"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/"
+  to = "/index.html"
+  status = 200
+
+[[edge_functions]]
+  path = "/api/chat"
+  function = "chat-stream"
