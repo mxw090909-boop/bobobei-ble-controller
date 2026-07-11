@@ -58,3 +58,5 @@ Bluefy -> Web Bluetooth -> SOSEXY
 - Netlify 线上页面只是部署页面；它不会自动替朋友创建 Supabase 项目、设备绑定或 BLE 权限。
 
 线上控制页只作为界面参考使用，真实运行配置没有放进本仓库。
+
+整理：Peiyu
