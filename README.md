@@ -13,16 +13,16 @@
 
 仓库中的配置都是占位符，请替换成自己的项目和设备信息。
 
-##  使用前配置
+## 使用前配置
 
 打开 index.html，找到配置区：
-
+```
 const SUPABASE_URL = "https://your-project-ref.supabase.co";
 const SUPABASE_KEY = "YOUR_SUPABASE_PUBLISHABLE_OR_ANON_KEY";
 const DEVICE_ID = "YOUR_DEVICE_ID";
 const DEVICE_TOKEN = "YOUR_DEVICE_TOKEN";
 const TARGET_NAME = "SOSEXY";
-
+```
 其中：
 
 * SUPABASE_URL：你自己的 Supabase Project URL。
@@ -38,12 +38,12 @@ const TARGET_NAME = "SOSEXY";
 Bluefy -> Web Bluetooth -> SOSEXY
 
 这种情况下，真正用于蓝牙连接的是：
-
+```
 const TARGET_NAME = "SOSEXY";
 const SERVICE_UUID = "0000ee01-0000-1000-8000-00805f9b34fb";
 const WRITE_CHAR_UUID = "0000ee03-0000-1000-8000-00805f9b34fb";
 const NOTIFY_CHAR_UUID = "0000ee02-0000-1000-8000-00805f9b34fb";
-
+```
 如果要让页面接收 Supabase 里的远程命令，需要再配置自己的 Supabase：
 
 1. 新建自己的 Supabase 项目。
@@ -53,11 +53,11 @@ const NOTIFY_CHAR_UUID = "0000ee02-0000-1000-8000-00805f9b34fb";
 5. 把同一套项目 URL、publishable / anon key、设备 ID 和设备 token 填进 index.html。
 
 也就是说，如果启用 Supabase 远程命令，下面三处必须对应同一套值：
-
+```
 index.html 里的 DEVICE_ID / DEVICE_TOKEN
 supabase/schema.sql 里的 device_id / device_token
 supabase/bluefy_commands.sql 里的 REPLACE_WITH_YOUR_DEVICE_ID
-
+```
 两份 SQL 负责 Supabase 命令队列和远程控制函数。
 
 ## 部署方式
@@ -99,4 +99,5 @@ supabase/bluefy_commands.sql 里的 REPLACE_WITH_YOUR_DEVICE_ID
 - 不要让官方设备 App 同时占用 BLE 连接；如果连接或动作状态不明确，先按 `STOP`，再断开并重新连接。
 - 部署平台只负责把页面放到 HTTPS 地址上；它不会自动替朋友创建 Supabase 项目、设备绑定或 BLE 权限。
 - DEVICE_ID / DEVICE_TOKEN 只影响 Supabase 远程命令校验，不决定蓝牙是否能连接；蓝牙连接主要依赖设备广播名、UUID 和控制指令。
+  
 线上控制页只作为界面参考使用，真实运行配置没有放进本仓库。
