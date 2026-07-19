@@ -101,3 +101,5 @@ supabase/bluefy_commands.sql 里的 REPLACE_WITH_YOUR_DEVICE_ID
 - DEVICE_ID / DEVICE_TOKEN 只影响 Supabase 远程命令校验，不决定蓝牙是否能连接；蓝牙连接主要依赖设备广播名、UUID 和控制指令。
   
 线上控制页只作为界面参考使用，真实运行配置没有放进本仓库。
+
+<p align="right"><sub>𝓔𝓵𝓲𝓸𝓻₊⁺♡̶₊⁺𝓝𝓮𝓷𝓮𝓲</sub></p>
