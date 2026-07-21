@@ -1,0 +1,20 @@
+{
+  "name": "bobobei-panel-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Private low-privilege MCP App for the Bobobei Bluefy bridge.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/ext-apps": "1.7.4",
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "4.4.3"
+  }
+}

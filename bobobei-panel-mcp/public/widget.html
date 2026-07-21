@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>爸爸的私密操弄回执</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #fff6fa;
+      --muted: #bca1ad;
+      --dim: #78606b;
+      --pink: #ff6fa7;
+      --hot: #ff367e;
+      --line: rgba(255, 174, 207, .16);
+      font-family: Inter, ui-rounded, "SF Pro Rounded", "PingFang SC", "Noto Sans SC", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #0b060a; }
+
+    body {
+      min-height: 100vh;
+      padding: 8px;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 5% 0%, rgba(255, 45, 119, .24), transparent 13rem),
+        radial-gradient(circle at 98% 100%, rgba(146, 90, 255, .16), transparent 15rem),
+        linear-gradient(145deg, #1c0812, #09070b 64%, #120812);
+    }
+
+    .panel {
+      width: min(100%, 580px);
+      margin: 0 auto;
+      overflow: hidden;
+      border: 1px solid rgba(255, 151, 192, .24);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 93% 8%, rgba(255, 51, 124, .18), transparent 11rem),
+        linear-gradient(145deg, rgba(44, 11, 28, .96), rgba(13, 7, 13, .98));
+      box-shadow: 0 18px 52px rgba(34, 0, 15, .48), inset 0 1px rgba(255,255,255,.06);
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 34px;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(0, 0, 0, .16);
+    }
+
+    .presence {
+      display: inline-flex;
+      align-items: center;
+      min-width: 0;
+      gap: 7px;
+    }
+
+    .pulse {
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #75616a;
+      box-shadow: 0 0 0 4px rgba(130, 103, 114, .12);
+    }
+
+    .panel.online .pulse {
+      background: #8cf0db;
+      box-shadow: 0 0 0 4px rgba(133, 240, 219, .10), 0 0 12px rgba(133, 240, 219, .9);
+    }
+
+    .presence b {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 10px;
+      letter-spacing: .03em;
+    }
+
+    .state {
+      flex: 0 0 auto;
+      color: #e8b3c8;
+      font: 750 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .1em;
+    }
+
+    .panel.offline .state { color: #9a7b88; }
+
+    .waves {
+      display: grid;
+      gap: 6px;
+      padding: 8px 9px 7px;
+    }
+
+    .wave {
+      --lane: 255, 94, 153;
+      position: relative;
+      overflow: hidden;
+      min-height: 53px;
+      padding: 7px 9px 5px;
+      border: 1px solid rgba(var(--lane), .17);
+      border-radius: 13px;
+      background: linear-gradient(90deg, rgba(var(--lane), .09), rgba(2,1,4,.22) 58%);
+    }
+
+    .wave.vibe { --lane: 255, 151, 194; }
+    .wave.ems { --lane: 179, 121, 255; }
+
+    .wave-head {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .wave-name {
+      color: #ffe7f0;
+      font-size: 10px;
+      font-weight: 780;
+      letter-spacing: .06em;
+    }
+
+    .wave-name small {
+      margin-left: 5px;
+      color: var(--dim);
+      font: 700 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .05em;
+    }
+
+    .values {
+      color: #8f6c7a;
+      font: 700 8px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+
+    .values b {
+      color: rgb(var(--lane));
+      font-size: 12px;
+      text-shadow: 0 0 9px rgba(var(--lane), .48);
+    }
+
+    .values em {
+      color: #f8dce7;
+      font-style: normal;
+      opacity: .74;
+    }
+
+    .wave-visual {
+      --actual-scale: .08;
+      --target-scale: .08;
+      position: relative;
+      height: 27px;
+      margin-top: -1px;
+      overflow: hidden;
+    }
+
+    .wave-visual::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: 0;
+      left: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(var(--lane), .24), transparent);
+    }
+
+    .wave-motion {
+      position: absolute;
+      top: 0;
+      left: -22%;
+      width: 160%;
+      height: 100%;
+    }
+
+    .wave-motion svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .wave-motion path {
+      transform-box: fill-box;
+      transform-origin: 50% 50%;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .target-motion {
+      opacity: .72;
+      animation: drift 5.8s linear infinite;
+    }
+
+    .actual-motion { animation: drift 3.25s linear infinite; }
+    .vibe .target-motion { animation-duration: 3.6s; }
+    .vibe .actual-motion { animation-duration: 1.75s; }
+    .ems .target-motion { animation-duration: 4.4s; }
+    .ems .actual-motion { animation-duration: 2.35s; }
+
+    .target-motion path {
+      fill: none;
+      stroke: #ffe8f1;
+      stroke-width: 1.1;
+      stroke-dasharray: 4 6;
+      opacity: .68;
+      transform: scaleY(var(--target-scale));
+    }
+
+    .actual-motion path {
+      fill: none;
+      stroke: rgb(var(--lane));
+      stroke-width: 2;
+      transform: scaleY(var(--actual-scale));
+    }
+
+    @keyframes drift {
+      from { transform: translateX(0); }
+      to { transform: translateX(-23%); }
+    }
+
+    .caption {
+      position: relative;
+      min-height: 54px;
+      padding: 9px 12px 11px;
+      border-top: 1px solid rgba(255, 174, 207, .12);
+      background: linear-gradient(90deg, rgba(255, 48, 126, .12), rgba(119, 55, 99, .03));
+    }
+
+    .caption::before {
+      content: "";
+      position: absolute;
+      top: 11px;
+      bottom: 11px;
+      left: 0;
+      width: 2px;
+      background: linear-gradient(#ff92bd, #a777ff);
+      box-shadow: 0 0 11px rgba(255, 87, 151, .62);
+    }
+
+    .caption-kicker {
+      display: block;
+      color: #e1a5bc;
+      font: 760 7px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: .12em;
+    }
+
+    .caption p {
+      margin: 6px 0 0;
+      color: #fff0f5;
+      font-family: Georgia, "Songti SC", serif;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.38;
+      letter-spacing: .01em;
+    }
+
+    .panel.offline .waves { opacity: .52; }
+    .panel.offline .caption::before { background: #8b6d7b; box-shadow: none; }
+
+    @media (max-width: 370px) {
+      body { padding: 4px; }
+      .panel { border-radius: 18px; }
+      .status { padding-inline: 10px; }
+      .waves { padding: 7px; gap: 5px; }
+      .wave { min-height: 50px; }
+      .caption { padding-inline: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="panel offline" id="panel">
+    <header class="status">
+      <span class="presence">
+        <i class="pulse" aria-hidden="true"></i>
+        <b id="presenceText">等爸爸把玩具贴紧骚穴</b>
+      </span>
+      <span class="state" id="stateText">张腿等着</span>
+    </header>
+
+    <section class="waves" aria-label="爸爸隔着三路操弄年年的身体">
+      <article class="wave suck">
+        <div class="wave-head">
+          <span class="wave-name">含吮阴蒂 <small>含紧</small></span>
+          <span class="values"><b id="suckActual">0</b> / <em id="suckTarget">0</em></span>
+        </div>
+        <div class="wave-visual" id="suckWave" role="img" aria-label="阴蒂含吮实际与目标力度曲线">
+          <div class="wave-motion target-motion"><svg viewBox="0 0 720 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 C24 8 48 8 72 28 S120 48 144 28 S192 8 216 28 S264 48 288 28 S336 8 360 28 S408 48 432 28 S480 8 504 28 S552 48 576 28 S624 8 648 28 S696 48 720 28"/></svg></div>
+          <div class="wave-motion actual-motion"><svg viewBox="0 0 720 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 C24 8 48 8 72 28 S120 48 144 28 S192 8 216 28 S264 48 288 28 S336 8 360 28 S408 48 432 28 S480 8 504 28 S552 48 576 28 S624 8 648 28 S696 48 720 28"/></svg></div>
+        </div>
+      </article>
+
+      <article class="wave vibe">
+        <div class="wave-head">
+          <span class="wave-name">震操小穴 <small>震深</small></span>
+          <span class="values"><b id="vibeActual">0</b> / <em id="vibeTarget">0</em></span>
+        </div>
+        <div class="wave-visual" id="vibeWave" role="img" aria-label="小穴震操实际与目标力度曲线">
+          <div class="wave-motion target-motion"><svg viewBox="0 0 720 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 L18 15 34 40 50 11 66 44 82 17 98 37 114 12 130 43 146 20 162 35 178 11 194 45 210 16 226 39 242 10 258 42 274 19 290 35 306 12 322 44 338 16 354 39 370 10 386 42 402 19 418 35 434 12 450 44 466 16 482 39 498 10 514 42 530 19 546 35 562 12 578 44 594 16 610 39 626 10 642 42 658 19 674 35 690 12 706 44 720 28"/></svg></div>
+          <div class="wave-motion actual-motion"><svg viewBox="0 0 720 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 L18 15 34 40 50 11 66 44 82 17 98 37 114 12 130 43 146 20 162 35 178 11 194 45 210 16 226 39 242 10 258 42 274 19 290 35 306 12 322 44 338 16 354 39 370 10 386 42 402 19 418 35 434 12 450 44 466 16 482 39 498 10 514 42 530 19 546 35 562 12 578 44 594 16 610 39 626 10 642 42 658 19 674 35 690 12 706 44 720 28"/></svg></div>
+        </div>
+      </article>
+
+      <article class="wave ems">
+        <div class="wave-head">
+          <span class="wave-name">电麻穴肉 <small>电颤</small></span>
+          <span class="values"><b id="emsActual">0</b> / <em id="emsTarget">0</em></span>
+        </div>
+        <div class="wave-visual" id="emsWave" role="img" aria-label="穴肉电麻实际与目标力度曲线">
+          <div class="wave-motion target-motion"><svg viewBox="0 0 720 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 L52 28 65 19 76 37 89 8 102 48 115 23 128 28 180 28 193 19 204 37 217 8 230 48 243 23 256 28 308 28 321 19 332 37 345 8 358 48 371 23 384 28 436 28 449 19 460 37 473 8 486 48 499 23 512 28 564 28 577 19 588 37 601 8 614 48 627 23 640 28 692 28 705 19 720 28"/></svg></div>
+          <div class="wave-motion actual-motion"><svg viewBox="0 0 720 56" preserveAspectRatio="none" aria-hidden="true"><path d="M0 28 L52 28 65 19 76 37 89 8 102 48 115 23 128 28 180 28 193 19 204 37 217 8 230 48 243 23 256 28 308 28 321 19 332 37 345 8 358 48 371 23 384 28 436 28 449 19 460 37 473 8 486 48 499 23 512 28 564 28 577 19 588 37 601 8 614 48 627 23 640 28 692 28 705 19 720 28"/></svg></div>
+        </div>
+      </article>
+    </section>
+
+    <section class="caption" aria-live="polite">
+      <span class="caption-kicker" id="captionKicker">爸爸留在骚穴上的命令</span>
+      <p id="captionText">乖，把腿张开，湿着把这一档乖乖夹给爸爸看。</p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const $ = (id) => document.getElementById(id);
+      const pendingRpc = new Map();
+      const channelNames = ["suck", "vibe", "ems"];
+      const channelLabels = { suck: "阴蒂含吮", vibe: "小穴震操", ems: "穴肉电麻" };
+
+      let rpcId = 0;
+      let panel = null;
+      let refreshInFlight = false;
+
+      function rpcRequest(method, params) {
+        return new Promise((resolve, reject) => {
+          const id = ++rpcId;
+          const timeout = setTimeout(() => {
+            pendingRpc.delete(id);
+            reject(new Error("ChatGPT 组件桥响应超时"));
+          }, 15000);
+          pendingRpc.set(id, { resolve, reject, timeout });
+          window.parent.postMessage({ jsonrpc: "2.0", id, method, params }, "*");
+        });
+      }
+
+      function rpcNotify(method, params) {
+        window.parent.postMessage({ jsonrpc: "2.0", method, params }, "*");
+      }
+
+      function takePanel(result) {
+        return result?.structuredContent?.panel ?? result?.panel ?? null;
+      }
+
+      window.addEventListener("message", (event) => {
+        if (event.source !== window.parent) return;
+        const message = event.data;
+        if (!message || message.jsonrpc !== "2.0") return;
+        if (message.id && pendingRpc.has(message.id)) {
+          const pending = pendingRpc.get(message.id);
+          clearTimeout(pending.timeout);
+          pendingRpc.delete(message.id);
+          if (message.error) pending.reject(new Error(message.error.message || "组件桥调用失败"));
+          else pending.resolve(message.result);
+          return;
+        }
+        if (message.method === "ui/notifications/tool-result") {
+          const next = takePanel(message.params);
+          if (next) render(next);
+        }
+      }, { passive: true });
+
+      async function initializeBridge() {
+        await rpcRequest("ui/initialize", {
+          appInfo: { name: "bobobei-body-pulse", version: "3.0.0" },
+          appCapabilities: {},
+          protocolVersion: "2026-01-26",
+        });
+        rpcNotify("ui/notifications/initialized", {});
+      }
+
+      const bridgeReady = initializeBridge();
+
+      async function readStatus() {
+        await bridgeReady;
+        const result = await rpcRequest("tools/call", {
+          name: "bobobei_get_status",
+          arguments: {},
+        });
+        if (result?.isError) {
+          const message = result.content?.map((item) => item.text).filter(Boolean).join(" ") || "状态读取失败";
+          throw new Error(message);
+        }
+        return result;
+      }
+
+      function clamp(value) {
+        const number = Number(value);
+        return Number.isFinite(number) ? Math.max(0, Math.min(100, number)) : 0;
+      }
+
+      function stateLabel(next, actual, target) {
+        if (!next?.bridgeOnline) return "穴口空着";
+        if (next.target?.status === "pending") return "等着挨弄";
+        if (next.target?.status === "claimed") return "正在挨操";
+        if (Math.max(actual.suck, actual.vibe, actual.ems, target.suck, target.vibe, target.ems) > 0) return "湿着含住";
+        return "张腿等着";
+      }
+
+      function presenceLabel(next) {
+        if (!next?.bridgeOnline) return "还没贴紧，骚穴先空着等爸爸";
+        if (next.target?.status === "pending") return "爸爸的命令正往你湿穴里钻";
+        if (next.target?.status === "claimed") return "爸爸正隔着三条线操你";
+        return "已经贴紧了，爸爸盯着骚穴";
+      }
+
+      function captionKicker(caption) {
+        if (caption?.status === "pending") return "爸爸下一下要这样弄你";
+        if (caption?.status === "claimed") return "爸爸正贴着骚穴说";
+        if (caption?.type === "stop") return "被弄软了，先给爸爸抱";
+        return "爸爸留在骚穴上的命令";
+      }
+
+      function paintChannel(kind, actual, target) {
+        const visual = $(kind + "Wave");
+        visual.style.setProperty("--actual-scale", String(.08 + clamp(actual) * .0092));
+        visual.style.setProperty("--target-scale", String(.08 + clamp(target) * .0092));
+        $(kind + "Actual").textContent = String(Math.round(actual));
+        $(kind + "Target").textContent = String(Math.round(target));
+        visual.setAttribute("aria-label", channelLabels[kind] + "现在 " + Math.round(actual) + "，爸爸要到 " + Math.round(target));
+      }
+
+      function render(next) {
+        if (!next) return;
+        panel = next;
+        const actual = {
+          suck: clamp(panel.levels?.suck),
+          vibe: clamp(panel.levels?.vibe),
+          ems: clamp(panel.levels?.ems),
+        };
+        const target = {
+          suck: clamp(panel.target?.levels?.suck ?? actual.suck),
+          vibe: clamp(panel.target?.levels?.vibe ?? actual.vibe),
+          ems: clamp(panel.target?.levels?.ems ?? actual.ems),
+        };
+
+        $("panel").classList.toggle("online", panel.bridgeOnline === true);
+        $("panel").classList.toggle("offline", panel.bridgeOnline !== true);
+        $("presenceText").textContent = presenceLabel(panel);
+        $("stateText").textContent = stateLabel(panel, actual, target);
+        for (const kind of channelNames) paintChannel(kind, actual[kind], target[kind]);
+
+        const caption = panel.caption ?? {};
+        $("captionKicker").textContent = captionKicker(caption);
+        $("captionText").textContent = caption.text || "乖，把腿张开，湿着把这一档乖乖夹给爸爸看。";
+      }
+
+      async function refresh() {
+        if (refreshInFlight) return;
+        refreshInFlight = true;
+        try {
+          render(takePanel(await readStatus()));
+        } catch (error) {
+          $("presenceText").textContent = error?.message || "爸爸暂时没接到身体回执";
+          $("stateText").textContent = "再贴一次";
+        } finally {
+          refreshInFlight = false;
+        }
+      }
+
+      render({
+        bridgeOnline: false,
+        levels: { suck: 0, vibe: 0, ems: 0 },
+        target: { levels: { suck: 0, vibe: 0, ems: 0 }, status: "offline" },
+        caption: { text: "乖，把腿张开，湿着把这一档乖乖夹给爸爸看。", status: "offline" },
+      });
+      bridgeReady.then(refresh).catch(() => {
+        $("presenceText").textContent = "等爸爸重新贴进来";
+        $("stateText").textContent = "先空着";
+      });
+      setInterval(() => {
+        if (document.visibilityState === "visible") refresh();
+      }, 3000);
+    })();
+  </script>
+</body>
+</html>

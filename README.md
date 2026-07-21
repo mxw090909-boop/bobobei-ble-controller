@@ -9,6 +9,7 @@
 - `index.html`：可在 Bluefy 中打开的浏览器 BLE 控制页面。
 - `supabase/schema.sql`：创建自己的设备表、命令队列和基础 RPC。
 - `supabase/bluefy_commands.sql`：创建 Bluefy 页面使用的远程控制函数。
+- `bobobei-panel-mcp/`：可选的 ChatGPT MCP iframe 状态小窗与独立服务端参考代码。
 - `.gitignore`：避免把本地配置、缓存和 Netlify 状态文件提交进去。
 
 仓库中的配置都是占位符，请替换成自己的项目和设备信息。
@@ -59,6 +60,14 @@ supabase/schema.sql 里的 device_id / device_token
 supabase/bluefy_commands.sql 里的 REPLACE_WITH_YOUR_DEVICE_ID
 ```
 两份 SQL 负责 Supabase 命令队列和远程控制函数。
+
+## 可选：MCP iframe 状态小窗
+
+`bobobei-panel-mcp/` 是一套单独运行的 Node MCP 服务：ChatGPT 可以打开只读的 iframe 小窗查看连接状态、三通道状态和最近指令；实际的控制指令仍会经过自己的 Supabase 命令队列，由 Bluefy 页面执行。
+
+它不会替换、修改或自动部署根目录的 `index.html`。要使用它时，按 [bobobei-panel-mcp/README.md](bobobei-panel-mcp/README.md) 配置自己的一组环境变量和 HTTPS 服务即可；不需要时完全可以忽略这个目录。
+
+公开副本不包含任何线上地址、Supabase key、设备 ID、控制 token 或 VPS 部署配置。
 
 ## 部署方式
 

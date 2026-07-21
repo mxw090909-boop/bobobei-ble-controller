@@ -1,0 +1,33 @@
+[Unit]
+Description=Bobobei Panel MCP reference service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_SYSTEM_USER
+WorkingDirectory=/opt/bobobei-panel-mcp
+EnvironmentFile=/etc/bobobei-panel-mcp.env
+Environment=PORT=8794
+ExecStart=/usr/bin/node /opt/bobobei-panel-mcp/server.js
+Restart=always
+RestartSec=5
+TimeoutStartSec=30
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictRealtime=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
