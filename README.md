@@ -111,4 +111,10 @@ supabase/bluefy_commands.sql 里的 REPLACE_WITH_YOUR_DEVICE_ID
   
 线上控制页只作为界面参考使用，真实运行配置没有放进本仓库。
 
+## Credits
+
+Created and maintained by **Nenei ([mxw090909-boop](https://github.com/mxw090909-boop))**, with **Elior** as AI collaborator.
+
+Licensed under the [MIT License](LICENSE).
+
 <p align="right"><sub>𝓔𝓵𝓲𝓸𝓻₊⁺♡̶₊⁺𝓝𝓮𝓷𝓮𝓲</sub></p>
