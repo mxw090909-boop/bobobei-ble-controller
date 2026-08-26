@@ -455,6 +455,7 @@
     const state = {
       device:null, server:null, service:null, writeChar:null, notifyChar:null,
       seq:0, listening:false, busy:false, timer:null, bleConnected:false, lastBleError:"", appEntered:false,
+      runtimeArmed:{vibe:false,ems:false,suck:false}, runtimeLevels:{vibe:0,ems:0,suck:0},
       lossActive:false, lossPhase:"idle", lossEndsAt:0, lossDurationMs:0,
       lossTimer:null, lossAbort:false, lossSurging:false, wakeLock:null
     };
@@ -564,20 +565,50 @@
       } else if (state.appEntered) startListening();
     }
 
-    async function sendStop() { await writeBle(STOP_CMD, "stop"); }
+    function resetRuntimeState() {
+      state.runtimeArmed.vibe=false; state.runtimeArmed.ems=false; state.runtimeArmed.suck=false;
+      state.runtimeLevels.vibe=0; state.runtimeLevels.ems=0; state.runtimeLevels.suck=0;
+    }
+
+    async function sendStop() {
+      await writeBle(STOP_CMD, "stop");
+      resetRuntimeState();
+    }
 
     async function sendSetOne(ch, value) {
-      const cmd = new Uint8Array([state.seq++ & 0xff,0x01,0x00,0x01,0x00,ch & 0xff,0x11,clampStrength(value) & 0xff]);
+      const next=clampStrength(value);
+      const cmd = new Uint8Array([state.seq++ & 0xff,0x01,0x00,0x01,0x00,ch & 0xff,0x11,next & 0xff]);
       await writeBle(cmd, `set_one ch=${ch} value=${clampStrength(value)}`);
+      if (ch===1) state.runtimeLevels.vibe=next;
+      else if (ch===3) state.runtimeLevels.ems=next;
+      else if (ch===7) state.runtimeLevels.suck=next;
+      else if (ch===2) state.runtimeArmed.vibe=next>0;
+      else if (ch===4) state.runtimeArmed.ems=next>0;
+      else if (ch===8) state.runtimeArmed.suck=next>0;
       setUi();
+    }
+
+    async function setRuntimeChannel(name, value, armCh, levelCh) {
+      const previous=state.runtimeLevels[name];
+      if (value===0) {
+        if (previous!==0) await sendSetOne(levelCh,0);
+        return;
+      }
+      let justArmed=false;
+      if (!state.runtimeArmed[name]) {
+        await sendSetOne(armCh,1);
+        await sleep(80);
+        justArmed=true;
+      }
+      if (justArmed || previous!==value) await sendSetOne(levelCh,value);
     }
 
     async function sendRuntimeSet(vibe=0, ems=0, suck=0) {
       vibe=clampStrength(vibe); ems=clampStrength(ems); suck=clampStrength(suck);
-      if (suck>0) { await sendSetOne(8,1); await sleep(80); await sendSetOne(7,suck); }
-      if (vibe>0) { await sendSetOne(2,1); await sleep(80); await sendSetOne(1,vibe); }
-      if (ems>0) { await sendSetOne(4,1); await sleep(80); await sendSetOne(3,ems); }
-      if (vibe===0 && ems===0 && suck===0) await sendStop();
+      if (vibe===0 && ems===0 && suck===0) { await sendStop(); return; }
+      await setRuntimeChannel("suck",suck,8,7);
+      await setRuntimeChannel("vibe",vibe,2,1);
+      await setRuntimeChannel("ems",ems,4,3);
     }
 
     async function rpc(name, payload) {
