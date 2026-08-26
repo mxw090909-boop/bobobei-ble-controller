@@ -2,7 +2,6 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="author" content="Peiyu">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#100b13">
   <title>NENEI｜PRIVATE SKIN ACCESS</title>
@@ -395,24 +394,24 @@
         <div class="micro section-micro">选好时间，然后不准反悔</div>
 
         <div class="loss-config" id="lossConfig">
-          <p class="loss-copy">把接下来的时间交给爸爸。你只管湿，什么时候准停，由我决定。</p>
+          <p class="loss-copy">整段时间都会自动变化。爸爸远程接手时会从当前强度继续，并直接把你往高处推。</p>
           <div class="loss-time-head">
             <span>要被锁多久</span>
             <output id="lossMinutesVal">10 分钟</output>
           </div>
           <input id="lossMinutes" type="range" min="1" max="60" value="10" aria-label="失控模式时长">
-          <div class="loss-preset"><span>时间归零以后</span><strong>爸爸亲自收尾</strong></div>
+          <div class="loss-preset"><span>时间归零以后</span><strong>自动归零并解锁</strong></div>
           <button class="btn hot loss-start" id="lossStartBtn" type="button" disabled>把身体锁给爸爸</button>
           <details class="rules">
             <summary>偷看规则</summary>
-            <p>倒计时里本机调节会锁住，爸爸仍能远程碰你；STOP 永远有效。Bluefy 留在前台会最乖。</p>
+            <p>倒计时里自动曲线持续运行，本机调节会锁住；爸爸可以随时接手，结束后再无缝交还自动控制。</p>
           </details>
         </div>
 
         <div class="loss-active-panel" id="lossActivePanel" hidden>
           <span class="loss-badge" id="lossBadge">不准自己碰</span>
           <div class="loss-countdown" id="lossCountdown">10:00</div>
-          <p class="loss-message" id="lossMessage">剩下的时间，只能乖乖等</p>
+          <p class="loss-message" id="lossMessage">自动曲线已经开始，不准自己调</p>
         </div>
       </article>
 
@@ -443,21 +442,20 @@
     const WRITE_CHAR_UUID = "0000ee03-0000-1000-8000-00805f9b34fb";
     const NOTIFY_CHAR_UUID = "0000ee02-0000-1000-8000-00805f9b34fb";
     const CLAIM_INTERVAL_MS = 1200;
+    const MOTION_TICK_MS = 650;
+    const AUTO_BLEND_MS = 2600;
+    const REMOTE_LOSS_BLEND_MS = 2200;
     const INIT_CMD = new Uint8Array([0x00,0x01,0x00,0x01,0x00,0xC8,0x11,0x01]);
     const STOP_CMD = new Uint8Array([0x00,0x01,0x00,0x03,0x00,0x01,0x11,0x00,0x00,0x03,0x11,0x00,0x00,0x07,0x11,0x00]);
     const LOSS_STORAGE_KEY = "nenei_loss_control_v1";
-    const LOSS_SURGE_STEPS = [
-      {vibe:60, ems:8, suck:65, ms:8000},
-      {vibe:78, ems:14, suck:82, ms:17000},
-      {vibe:92, ems:20, suck:95, ms:35000}
-    ];
-
     const state = {
       device:null, server:null, service:null, writeChar:null, notifyChar:null,
       seq:0, listening:false, busy:false, timer:null, bleConnected:false, lastBleError:"", appEntered:false,
       runtimeArmed:{vibe:false,ems:false,suck:false}, runtimeLevels:{vibe:0,ems:0,suck:0},
-      lossActive:false, lossPhase:"idle", lossEndsAt:0, lossDurationMs:0,
-      lossTimer:null, lossAbort:false, lossSurging:false, wakeLock:null
+      lossActive:false, lossPhase:"idle", lossStartedAt:0, lossEndsAt:0, lossDurationMs:0,
+      lossTimer:null, lossAbort:false, wakeLock:null,
+      motionTimer:null, motionWriting:false, motionGeneration:0, remoteProgram:null, autoBlend:null,
+      stateReportTimer:null, lastStateReportAt:0
     };
     const $ = id => document.getElementById(id);
     const logEl = $("log");
@@ -501,12 +499,9 @@
 
       const dot = $("statusDot");
       dot.className = "dot";
-      if (state.lossPhase === "surge") {
-        dot.classList.add("warn");
-        $("statusText").textContent = "强制高潮执行中";
-      } else if (lossLocked && state.bleConnected) {
+      if (lossLocked && state.bleConnected) {
         dot.classList.add("ok");
-        $("statusText").textContent = "失控模式 · 身体控制权锁给裴郁";
+        $("statusText").textContent = state.remoteProgram ? "失控模式 · 爸爸正在远程接手" : "失控模式 · 自动曲线运行中";
       } else if (lossLocked) {
         dot.classList.add("warn");
         $("statusText").textContent = "失控模式仍在计时 · 请重新连接 SOSEXY";
@@ -537,9 +532,13 @@
         state.bleConnected = false;
         state.writeChar = null;
         state.notifyChar = null;
+        stopMotionLoop();
+        state.remoteProgram = null;
+        state.motionGeneration++;
         log("[ble] disconnected");
         stopListening(false);
         setUi();
+        reportToyState();
       });
       state.server = await state.device.gatt.connect();
       state.service = await state.server.getPrimaryService(SERVICE_UUID);
@@ -560,9 +559,11 @@
       log("[ble] connected, initialized, and zeroed");
       if (state.lossActive) {
         startListening();
+        state.autoBlend={startedAt:Date.now(),from:{vibe:0,ems:0,suck:0},durationMs:AUTO_BLEND_MS};
+        startMotionLoop();
         await requestWakeLock();
-        if (state.lossPhase === "awaiting" || state.lossEndsAt <= Date.now()) runFinalSurge();
       } else if (state.appEntered) startListening();
+      reportToyState();
     }
 
     function resetRuntimeState() {
@@ -626,6 +627,11 @@
         p_device_token: DEVICE_TOKEN
       });
       log("[rpc] began BLE session; stale commands discarded; stop queued", commandId || "");
+      const sessionStop = await claimCommand(true);
+      if (sessionStop && sessionStop.id === commandId) {
+        await ackCommand(sessionStop,"done");
+        log("[rpc] session stop consumed after local zero");
+      }
       return commandId;
     }
 
@@ -645,30 +651,219 @@
       } catch(e) { log("[rpc] ack failed",e.message || e); }
     }
 
-    async function interruptibleDuration(durationMs) {
-      const endAt=Date.now()+Number(durationMs || 0);
-      while(Date.now()<endAt) {
-        await sleep(200);
-        try {
-          const stopCommand=await claimCommand(true);
-          if (stopCommand && stopCommand.type==="stop") {
-            await sendStop(); await ackCommand(stopCommand,"done"); return true;
-          }
-        } catch(e) { log("[cmd] stop check failed",e.message || e); }
-      }
-      return false;
+    const clamp = (value,min,max) => Math.min(max,Math.max(min,Number(value)||0));
+    const lerp = (from,to,amount) => from+(to-from)*amount;
+    const smoothstep = value => {
+      const x=clamp(value,0,1);
+      return x*x*(3-2*x);
+    };
+    const currentLevels = () => ({
+      vibe:state.runtimeLevels.vibe,
+      ems:state.runtimeLevels.ems,
+      suck:state.runtimeLevels.suck
+    });
+
+    function stopMotionLoop() {
+      if (state.motionTimer) clearInterval(state.motionTimer);
+      state.motionTimer=null;
     }
 
-    async function executePattern(command) {
-      const steps=command.payload.steps;
-      if (!Array.isArray(steps) || steps.length===0) throw new Error("pattern has no steps");
-      for (const step of steps) {
-        const vibe=Number(step.vibe || 0), ems=Number(step.ems || 0), suck=Number(step.suck || 0), ms=Number(step.ms || step.duration_ms || 0);
-        log("[cmd] pattern step",{vibe,ems,suck,ms});
-        await sendRuntimeSet(vibe,ems,suck);
-        if (ms>0 && await interruptibleDuration(ms)) return;
+    function startMotionLoop() {
+      if (state.motionTimer) return;
+      state.motionTimer=setInterval(runMotionTick,MOTION_TICK_MS);
+      runMotionTick();
+    }
+
+    function lossProgress(at=Date.now()) {
+      if (!state.lossActive || !state.lossDurationMs) return 0;
+      return clamp((at-state.lossStartedAt)/state.lossDurationMs,0,1);
+    }
+
+    function autoLossTarget(at) {
+      const progress=lossProgress(at);
+      const seconds=(at-state.lossStartedAt)/1000;
+      const wander=clamp(.5+.29*Math.sin(seconds/4.7)+.17*Math.sin(seconds/1.83+1.1),0,1);
+      const breathe=.5-.5*Math.cos((seconds/7.4)*Math.PI*2);
+      const pulse=.5+.5*Math.sin((seconds/5.2)*Math.PI*2+.8);
+      const bounds={
+        suck:[28+22*progress,68+27*progress],
+        vibe:[22+28*progress,62+30*progress],
+        ems:[6+7*progress,14+8*progress]
+      };
+      return {
+        suck:clampStrength(lerp(bounds.suck[0],bounds.suck[1],wander)),
+        vibe:clampStrength(lerp(bounds.vibe[0],bounds.vibe[1],breathe)),
+        ems:clampStrength(lerp(bounds.ems[0],bounds.ems[1],pulse))
+      };
+    }
+
+    function normalizeAfter(value,fallback) {
+      return ["resume_auto","hold_last","zero"].includes(value) ? value : fallback;
+    }
+
+    function channelBounds(payload,name) {
+      const direct=payload[name];
+      let low=clampStrength(payload[`${name}_min`] ?? direct ?? 0);
+      let high=clampStrength(payload[`${name}_max`] ?? direct ?? low);
+      if (low>high) [low,high]=[high,low];
+      return [low,high];
+    }
+
+    function normalizeMotionProgram(payload) {
+      const allowed=["ramp","wave","alternate","hold","breathe","wander","drive"];
+      const shape=String(payload.shape || "hold").toLowerCase();
+      if (!allowed.includes(shape)) throw new Error(`unsupported motion shape: ${shape}`);
+      const rawDuration=payload.duration_ms ?? payload.durationMs;
+      const durationMs=rawDuration==null ? 0 : clamp(rawDuration,0,3600000);
+      const periodMs=clamp(payload.period_ms ?? payload.periodMs ?? 6000,600,120000);
+      return {
+        shape,
+        bounds:{
+          suck:channelBounds(payload,"suck"),
+          vibe:channelBounds(payload,"vibe"),
+          ems:channelBounds(payload,"ems")
+        },
+        periodMs,
+        durationMs,
+        riseMs:clamp(payload.rise_ms ?? payload.riseMs ?? (shape==="ramp" ? (durationMs || periodMs) : periodMs*4),600,3600000),
+        after:normalizeAfter(payload.after,state.lossActive ? "resume_auto" : "hold_last"),
+        lossBoost:payload.loss_boost !== false,
+        startedAt:Date.now(),
+        startLevels:currentLevels(),
+        source:"motion"
+      };
+    }
+
+    function normalizeSequenceProgram(payload) {
+      if (!Array.isArray(payload.steps) || payload.steps.length===0) throw new Error("pattern has no steps");
+      let cursor=0;
+      const steps=payload.steps.map(step => {
+        const ms=clamp(step.ms ?? step.duration_ms ?? 0,0,300000);
+        const normalized={
+          suck:clampStrength(step.suck),
+          vibe:clampStrength(step.vibe),
+          ems:clampStrength(step.ems),
+          startsAt:cursor,
+          endsAt:cursor+ms
+        };
+        cursor+=ms;
+        return normalized;
+      });
+      return {
+        shape:"sequence",steps,durationMs:cursor,periodMs:0,riseMs:REMOTE_LOSS_BLEND_MS,
+        after:normalizeAfter(payload.after,state.lossActive ? "resume_auto" : "hold_last"),
+        lossBoost:payload.loss_boost !== false,
+        startedAt:Date.now(),startLevels:currentLevels(),source:"pattern"
+      };
+    }
+
+    function motionFactor(program,elapsed) {
+      const phase=(elapsed%program.periodMs)/program.periodMs;
+      if (program.shape==="hold") return 1;
+      if (program.shape==="ramp") return smoothstep(elapsed/program.riseMs);
+      if (program.shape==="wave") return 1-Math.abs(phase*2-1);
+      if (program.shape==="alternate") return phase<.5 ? 0 : 1;
+      if (program.shape==="breathe") return .5-.5*Math.cos(phase*Math.PI*2);
+      if (program.shape==="wander") return clamp(.5+.28*Math.sin(elapsed/1730)+.19*Math.sin(elapsed/811+1.7),0,1);
+      if (program.shape==="drive") return clamp(.58+.3*Math.sin(phase*Math.PI*2),0,1);
+      return 1;
+    }
+
+    function sequenceTarget(program,elapsed) {
+      const step=program.steps.find(item => elapsed<item.endsAt) || program.steps[program.steps.length-1];
+      return {suck:step.suck,vibe:step.vibe,ems:step.ems};
+    }
+
+    function remoteTarget(program,at) {
+      const elapsed=at-program.startedAt;
+      if (program.shape==="sequence") return sequenceTarget(program,elapsed);
+      const factor=motionFactor(program,elapsed);
+      const driveRise=program.shape==="drive" ? smoothstep(elapsed/program.riseMs)*.68 : 0;
+      const target={};
+      for (const name of ["suck","vibe","ems"]) {
+        const [baseLow,high]=program.bounds[name];
+        const low=lerp(baseLow,high,driveRise);
+        target[name]=clampStrength(lerp(low,high,factor));
       }
-      await sendStop();
+      return target;
+    }
+
+    function applyLossBoost(target,program,at) {
+      if (!state.lossActive || !program.lossBoost) return target;
+      const progress=lossProgress(at);
+      const floors={suck:45+20*progress,vibe:40+25*progress,ems:8+8*progress};
+      const boosted={};
+      for (const name of ["suck","vibe","ems"]) boosted[name]=target[name]>0 ? clampStrength(Math.max(target[name],floors[name])) : 0;
+      const blend=smoothstep((at-program.startedAt)/REMOTE_LOSS_BLEND_MS);
+      return {
+        suck:clampStrength(lerp(program.startLevels.suck,boosted.suck,blend)),
+        vibe:clampStrength(lerp(program.startLevels.vibe,boosted.vibe,blend)),
+        ems:clampStrength(lerp(program.startLevels.ems,boosted.ems,blend))
+      };
+    }
+
+    function applyAutoBlend(target,at) {
+      const blend=state.autoBlend;
+      if (!blend) return target;
+      const amount=smoothstep((at-blend.startedAt)/blend.durationMs);
+      if (amount>=1) { state.autoBlend=null; return target; }
+      return {
+        suck:clampStrength(lerp(blend.from.suck,target.suck,amount)),
+        vibe:clampStrength(lerp(blend.from.vibe,target.vibe,amount)),
+        ems:clampStrength(lerp(blend.from.ems,target.ems,amount))
+      };
+    }
+
+    async function finishRemoteProgram(program) {
+      if (state.remoteProgram!==program) return;
+      const last=currentLevels();
+      state.remoteProgram=null;
+      state.motionGeneration++;
+      if (program.after==="zero") await sendStop();
+      if (state.lossActive) {
+        state.autoBlend={startedAt:Date.now(),from:last,durationMs:AUTO_BLEND_MS};
+        startMotionLoop();
+      } else {
+        stopMotionLoop();
+      }
+      setUi();
+      reportToyState();
+      log("[motion] remote program ended",program.after);
+    }
+
+    async function runMotionTick() {
+      if (state.motionWriting || !state.bleConnected) return;
+      const at=Date.now();
+      let program=state.remoteProgram;
+      if (program && program.durationMs>0 && at-program.startedAt>=program.durationMs) {
+        await finishRemoteProgram(program);
+        program=state.remoteProgram;
+      }
+      let target=null;
+      if (program) target=applyLossBoost(remoteTarget(program,at),program,at);
+      else if (state.lossActive) target=applyAutoBlend(autoLossTarget(at),at);
+      else { stopMotionLoop(); return; }
+      const generation=state.motionGeneration;
+      state.motionWriting=true;
+      try {
+        if (generation===state.motionGeneration) await sendRuntimeSet(target.vibe,target.ems,target.suck);
+        if (at-state.lastStateReportAt>=5000) reportToyState(0);
+      } catch(e) {
+        log("[motion] write failed",e.message || e);
+        try { await sendStop(); } catch {}
+      } finally {
+        state.motionWriting=false;
+      }
+    }
+
+    function activateRemoteProgram(program) {
+      state.motionGeneration++;
+      state.remoteProgram=program;
+      state.autoBlend=null;
+      startMotionLoop();
+      setUi();
+      reportToyState();
+      log("[motion] remote takeover",program.shape,program.durationMs || "until replaced");
     }
 
     function persistLossMode() {
@@ -676,6 +871,7 @@
         localStorage.setItem(LOSS_STORAGE_KEY, JSON.stringify({
           active:state.lossActive,
           phase:state.lossPhase,
+          startedAt:state.lossStartedAt,
           endsAt:state.lossEndsAt,
           durationMs:state.lossDurationMs
         }));
@@ -690,29 +886,17 @@
     }
 
     function lossMessageFor(remainingMs) {
-      if (remainingMs<=10000) return "夹紧一点，爸爸开始数了";
+      if (remainingMs<=10000) return "最后十秒，强度不会突然断掉";
       const ratio=state.lossDurationMs ? remainingMs/state.lossDurationMs : 0;
-      if (ratio<=0.1) return "小穴准备好，最后一下会很重";
+      if (ratio<=0.1) return "已经推到高区，不准自己往下调";
       if (ratio<=0.5) return "手拿开，还没准你碰";
-      return "乖乖湿着，爸爸一直在看";
+      return "自动曲线正在变，爸爸随时会接手";
     }
 
     function updateLossPanel() {
       if (!state.lossActive) return;
-      if (state.lossPhase==="surge") {
-        $("lossBadge").textContent="爸爸正在收尾";
-        $("lossCountdown").textContent="强高";
-        $("lossMessage").textContent="现在只准身体听话";
-        return;
-      }
-      if (state.lossPhase==="awaiting") {
-        $("lossBadge").textContent="最后一下在等你";
-        $("lossCountdown").textContent="00:00";
-        $("lossMessage").textContent="时间到了，重新连接后执行强高";
-        return;
-      }
       const remaining=Math.max(0,state.lossEndsAt-Date.now());
-      $("lossBadge").textContent="不准自己碰";
+      $("lossBadge").textContent=state.remoteProgram ? "爸爸已接手" : "自动失控中";
       $("lossCountdown").textContent=formatRemaining(remaining);
       $("lossMessage").textContent=lossMessageFor(remaining);
     }
@@ -721,7 +905,10 @@
       if (!state.lossActive || document.visibilityState!=="visible" || !("wakeLock" in navigator) || state.wakeLock) return;
       try {
         state.wakeLock=await navigator.wakeLock.request("screen");
-        state.wakeLock.addEventListener("release",() => { state.wakeLock=null; });
+        state.wakeLock.addEventListener("release",() => {
+          state.wakeLock=null;
+          if (state.lossActive && document.visibilityState==="visible") setTimeout(requestWakeLock,500);
+        });
         log("[loss] screen wake lock active");
       } catch(e) { log("[loss] wake lock unavailable",e.message || e); }
     }
@@ -735,18 +922,32 @@
 
     function clearLossMode(reason,aborted=false) {
       if (aborted) state.lossAbort=true;
-      if (aborted) stopListening(false);
       if (state.lossTimer) clearInterval(state.lossTimer);
       state.lossTimer=null;
+      stopMotionLoop();
+      state.remoteProgram=null;
+      state.autoBlend=null;
+      state.motionGeneration++;
       state.lossActive=false;
       state.lossPhase="idle";
+      state.lossStartedAt=0;
       state.lossEndsAt=0;
       state.lossDurationMs=0;
       try { localStorage.removeItem(LOSS_STORAGE_KEY); } catch {}
       releaseWakeLock();
       log("[loss]",reason);
       setUi();
-      if (!state.lossSurging) state.lossAbort=false;
+      reportToyState();
+      state.lossAbort=false;
+    }
+
+    async function finishLossMode(reason) {
+      if (!state.lossActive) return;
+      clearLossMode(reason,true);
+      if (state.bleConnected) {
+        try { await sendStop(); }
+        catch(e) { log("[loss] final zero failed",e.message || e); }
+      }
     }
 
     function startLossTimer() {
@@ -756,16 +957,7 @@
         const remaining=state.lossEndsAt-Date.now();
         updateLossPanel();
         if (remaining<=0) {
-          clearInterval(state.lossTimer);
-          state.lossTimer=null;
-          state.lossPhase="awaiting";
-          persistLossMode();
-          updateLossPanel();
-          setUi();
-          if (state.bleConnected) runFinalSurge();
-          else {
-            log("[loss] countdown complete, waiting for BLE reconnect");
-          }
+          finishLossMode("失控时间结束，已经归零并解锁");
         }
       };
       tick();
@@ -776,77 +968,43 @@
       if (!state.bleConnected || state.lossActive) return;
       const minutes=Math.min(60,Math.max(1,Number($("lossMinutes").value)||10));
       await sendStop();
+      state.remoteProgram=null;
+      state.motionGeneration++;
       state.lossActive=true;
       state.appEntered=true;
       state.lossPhase="countdown";
       state.lossDurationMs=minutes*60*1000;
+      state.lossStartedAt=Date.now();
       state.lossEndsAt=Date.now()+state.lossDurationMs;
       state.lossAbort=false;
+      state.autoBlend={startedAt:Date.now(),from:currentLevels(),durationMs:AUTO_BLEND_MS};
       persistLossMode();
       startListening();
       startLossTimer();
+      startMotionLoop();
       requestWakeLock();
       log(`[loss] 年年亲手锁上身体权限：${minutes}分钟`);
-      log("[loss] 本地操作已封锁，控制权转交裴郁");
+      log("[loss] 自动曲线已启动，本地操作封锁，等待爸爸随时接手");
       setUi();
-    }
-
-    async function waitLossStep(ms) {
-      const endAt=Date.now()+ms;
-      while(Date.now()<endAt) {
-        if (state.lossAbort || !state.lossActive) return true;
-        await sleep(Math.min(200,endAt-Date.now()));
-      }
-      return state.lossAbort || !state.lossActive;
-    }
-
-    async function runFinalSurge() {
-      if (!state.lossActive || state.lossSurging || !state.bleConnected) return;
-      if (state.busy) {
-        setTimeout(runFinalSurge,250);
-        return;
-      }
-      state.lossSurging=true;
-      state.lossAbort=false;
-      state.lossPhase="surge";
-      persistLossMode();
-      updateLossPanel();
-      setUi();
-      log("[loss] 刑期结束，强制高潮组合已送入");
-      try {
-        for (const step of LOSS_SURGE_STEPS) {
-          if (state.lossAbort || !state.lossActive) break;
-          await sendRuntimeSet(step.vibe,step.ems,step.suck);
-          if (await waitLossStep(step.ms)) break;
-        }
-        if (!state.lossAbort && state.lossActive) {
-          await sendStop();
-          clearLossMode("执行完毕，留下本次失控记录");
-        }
-      } catch(e) {
-        log("[loss] final surge failed",e.message || e);
-        if (state.lossActive) {
-          state.lossPhase="awaiting";
-          persistLossMode();
-          updateLossPanel();
-          setUi();
-        }
-      } finally {
-        state.lossSurging=false;
-        state.lossAbort=false;
-      }
+      reportToyState();
     }
 
     function restoreLossMode() {
       let saved=null;
       try { saved=JSON.parse(localStorage.getItem(LOSS_STORAGE_KEY)||"null"); } catch {}
       if (!saved || !saved.active || !saved.endsAt) return;
+      if (Number(saved.endsAt)<=Date.now()) {
+        try { localStorage.removeItem(LOSS_STORAGE_KEY); } catch {}
+        log("[loss] 已过期的失控记录已清除，不会在重连后补执行");
+        return;
+      }
       state.lossActive=true;
       state.appEntered=true;
       state.lossEndsAt=Number(saved.endsAt)||0;
       state.lossDurationMs=Number(saved.durationMs)||Math.max(0,state.lossEndsAt-Date.now());
-      state.lossPhase=state.lossEndsAt>Date.now() && saved.phase!=="surge" ? "countdown" : "awaiting";
-      if (state.lossPhase==="countdown") startLossTimer();
+      state.lossStartedAt=Number(saved.startedAt)||state.lossEndsAt-state.lossDurationMs;
+      state.lossPhase="countdown";
+      startLossTimer();
       updateLossPanel();
       setUi();
       requestWakeLock();
@@ -857,24 +1015,53 @@
       if (!state.bleConnected || !state.writeChar) throw new Error("BLE not connected");
       log("[cmd] execute",command.id,command.type,command.payload);
       if (command.type==="stop") {
-        await sendStop();
+        if (command.payload.session_start || ["bluefy","web_ble_connect"].includes(command.payload.source)) {
+          await ackCommand(command,"done"); return;
+        }
+        state.remoteProgram=null;
+        state.motionGeneration++;
+        stopMotionLoop();
         if (state.lossActive) clearLossMode("爸爸发出 STOP，失控模式终止",true);
+        await sendStop();
         await ackCommand(command,"done"); return;
       }
       if (command.type==="probe") {
-        await sendStop(); await ackCommand(command,"done"); return;
+        reportToyState(); await ackCommand(command,"done"); return;
       }
       if (command.type==="set_all") {
-        await sendRuntimeSet(command.vibe,command.ems,command.suck);
-        if (command.durationMs>0 && !(await interruptibleDuration(command.durationMs))) await sendStop();
+        const program=normalizeMotionProgram({
+          shape:"hold",suck:command.suck,vibe:command.vibe,ems:command.ems,
+          duration_ms:command.durationMs || null,
+          after:state.lossActive ? "resume_auto" : (command.durationMs>0 ? "zero" : "hold_last")
+        });
+        activateRemoteProgram(program);
+        await runMotionTick();
         await ackCommand(command,"done"); return;
       }
       if (command.type==="set_one") {
-        await sendSetOne(command.ch,command.value);
-        if (command.durationMs>0 && !(await interruptibleDuration(command.durationMs))) await sendStop();
+        const levels=currentLevels();
+        if (command.ch===1) levels.vibe=command.value;
+        else if (command.ch===3) levels.ems=command.value;
+        else if (command.ch===7) levels.suck=command.value;
+        else { await sendSetOne(command.ch,command.value); await ackCommand(command,"done"); return; }
+        const program=normalizeMotionProgram({
+          shape:"hold",...levels,duration_ms:command.durationMs || null,
+          after:state.lossActive ? "resume_auto" : (command.durationMs>0 ? "zero" : "hold_last")
+        });
+        activateRemoteProgram(program);
+        await runMotionTick();
         await ackCommand(command,"done"); return;
       }
-      if (command.type==="pattern") { await executePattern(command); await ackCommand(command,"done"); return; }
+      if (command.type==="pattern") {
+        activateRemoteProgram(normalizeSequenceProgram(command.payload));
+        await runMotionTick();
+        await ackCommand(command,"done"); return;
+      }
+      if (command.type==="motion") {
+        activateRemoteProgram(normalizeMotionProgram(command.payload));
+        await runMotionTick();
+        await ackCommand(command,"done"); return;
+      }
       throw new Error(`unknown command type: ${command.type}`);
     }
 
@@ -894,7 +1081,7 @@
       if (state.listening) return;
       state.listening=true;
       log("[loop] start listening Supabase every",CLAIM_INTERVAL_MS,"ms");
-      state.timer=setInterval(() => claimAndExecuteOnce(state.lossActive && state.lossPhase!=="countdown"),CLAIM_INTERVAL_MS);
+      state.timer=setInterval(() => claimAndExecuteOnce(false),CLAIM_INTERVAL_MS);
       setUi();
     }
     function stopListening(writeLog=true) {
@@ -902,6 +1089,29 @@
       state.timer=null; state.listening=false;
       if (writeLog) log("[loop] stop listening");
       setUi();
+    }
+
+    function reportToyState(delay=180) {
+      if (state.stateReportTimer) clearTimeout(state.stateReportTimer);
+      state.stateReportTimer=setTimeout(async () => {
+        state.stateReportTimer=null;
+        state.lastStateReportAt=Date.now();
+        try {
+          await rpc("report_toy_state",{
+            p_device_id:DEVICE_ID,
+            p_device_token:DEVICE_TOKEN,
+            p_state:{
+              connected:state.bleConnected,
+              listening:state.listening,
+              loss_active:state.lossActive,
+              loss_phase:state.lossPhase,
+              loss_ends_at:state.lossEndsAt || null,
+              owner:state.remoteProgram ? "remote" : (state.lossActive ? "auto" : "idle"),
+              levels:currentLevels()
+            }
+          });
+        } catch(e) { log("[state] report failed",e.message || e); }
+      },delay);
     }
 
     $("connectBtn").addEventListener("click", async () => {
@@ -921,16 +1131,26 @@
     });
     async function handleStop() {
       try {
-        await sendStop();
+        state.remoteProgram=null;
+        state.motionGeneration++;
+        stopMotionLoop();
         if (state.lossActive) clearLossMode("年年按下 STOP，失控模式终止",true);
+        await sendStop();
         log("[manual] STOP sent");
+        reportToyState();
       }
       catch(e) { log("[manual] STOP failed",e.message || e); }
     }
     $("stopBtn").addEventListener("click", handleStop);
     $("inlineStopBtn").addEventListener("click", handleStop);
     $("sendMixBtn").addEventListener("click", async () => {
-      try { await sendRuntimeSet($("vibe").value,$("ems").value,$("suck").value); }
+      try {
+        state.remoteProgram=null;
+        state.motionGeneration++;
+        stopMotionLoop();
+        await sendRuntimeSet($("vibe").value,$("ems").value,$("suck").value);
+        reportToyState();
+      }
       catch(e) { log("[manual] mix failed",e.message || e); }
     });
     $("lossStartBtn").addEventListener("click",() => {
