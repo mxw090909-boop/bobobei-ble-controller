@@ -9,6 +9,7 @@
 - `index.html`：可在 Bluefy 中打开的浏览器 BLE 控制页面。
 - `supabase/schema.sql`：创建自己的设备表、命令队列和基础 RPC。
 - `supabase/bluefy_commands.sql`：创建 Bluefy 页面使用的远程控制函数。
+- `supabase/motion_engine.sql`：增加运行状态查询与连续动作生成器。
 - `bobobei-panel-mcp/`：可选的 ChatGPT MCP iframe 状态小窗与独立服务端参考代码。
 - `.gitignore`：避免把本地配置、缓存和 Netlify 状态文件提交进去。
 
@@ -49,8 +50,8 @@ const NOTIFY_CHAR_UUID = "0000ee02-0000-1000-8000-00805f9b34fb";
 
 1. 新建自己的 Supabase 项目。
 2. 在 supabase/schema.sql 的示例设备记录里，替换设备 ID、设备 token、控制 token 和显示名称。
-3. 在 supabase/bluefy_commands.sql 里，把所有 REPLACE_WITH_YOUR_DEVICE_ID 替换成同一个设备 ID。
-4. 在 Supabase SQL Editor 中先执行 schema.sql，再执行 bluefy_commands.sql。
+3. 在 supabase/bluefy_commands.sql 和 supabase/motion_engine.sql 里，把所有 REPLACE_WITH_YOUR_DEVICE_ID 替换成同一个设备 ID。
+4. 在 Supabase SQL Editor 中依次执行 schema.sql、bluefy_commands.sql、motion_engine.sql。
 5. 把同一套项目 URL、publishable / anon key、设备 ID 和设备 token 填进 index.html。
 
 也就是说，如果启用 Supabase 远程命令，下面三处必须对应同一套值：
@@ -60,6 +61,35 @@ supabase/schema.sql 里的 device_id / device_token
 supabase/bluefy_commands.sql 里的 REPLACE_WITH_YOUR_DEVICE_ID
 ```
 两份 SQL 负责 Supabase 命令队列和远程控制函数。
+
+## 连续动作与失控模式
+
+新版页面内置连续动作引擎。失控模式开始后会立即自动运行，在所选总时长内持续生成变化；远程命令可以无缝接手，命令结束后默认交还自动程序。总时限结束才会归零并解锁，不再追加固定的“最终强高”。
+
+执行 `supabase/motion_engine.sql` 后可使用：
+
+- `ps()`：读取设备在线状态、当前档位、是否处于失控模式，以及当前由自动程序还是远程控制。
+- `pg(p_spec jsonb)`：发送连续动作。支持 `ramp`、`wave`、`alternate`、`hold`、`breathe`、`wander`、`drive`。
+- `duration_ms` 留空时持续到下一条命令；指定时长后，在失控模式中默认交还自动控制，普通模式中默认保持最后档位。
+- `after` 可显式设为 `resume_auto`、`hold_last` 或 `zero`。
+
+示例：
+
+```sql
+select public.pg('{
+  "shape": "wave",
+  "suck_min": 35,
+  "suck_max": 80,
+  "vibe_min": 25,
+  "vibe_max": 75,
+  "ems_min": 8,
+  "ems_max": 18,
+  "period_ms": 6000,
+  "duration_ms": 180000
+}'::jsonb);
+```
+
+`pc()` 现在只用于连接检测，不会再打断正在运行的强度。旧的 `pt/pw/pm/pz` 仍然兼容；新的连续动作到达后会替换旧曲线，不需要等上一条波浪完整跑完。
 
 ## 可选：MCP iframe 状态小窗
 
