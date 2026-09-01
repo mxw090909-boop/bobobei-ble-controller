@@ -2,11 +2,11 @@
 
 <!-- 裴郁 -->
 
-纯 Bluefy / Web Bluetooth 控制页参考代码。
+纯 Web Bluetooth 控制页参考代码。iOS / iPadOS 使用 Bluefy 打开；Android 备用机可直接使用 Chrome 打开已部署的 HTTPS 页面。
 
 ## 包含内容
 
-- `index.html`：可在 Bluefy 中打开的浏览器 BLE 控制页面。
+- `index.html`：可在支持 Web Bluetooth 的浏览器中打开的 BLE 控制页面（iOS / iPadOS 使用 Bluefy，Android 使用 Chrome）。
 - `supabase/schema.sql`：创建自己的设备表、命令队列和基础 RPC。
 - `supabase/bluefy_commands.sql`：创建 Bluefy 页面使用的远程控制函数。
 - `supabase/motion_engine.sql`：增加运行状态查询与连续动作生成器。
@@ -35,9 +35,12 @@ const TARGET_NAME = "SOSEXY";
 
 注意：DEVICE_ID 和 DEVICE_TOKEN 不是 Supabase 官方提供的固定值，也不是蓝牙连接 SOSEXY 所需的 UUID。它们只用于 Supabase 远程命令队列里的设备校验。
 
-如果只使用 Bluefy 本地连接和页面按钮，核心流程是：
+如果只使用本地连接和页面按钮，核心流程是：
 
-Bluefy -> Web Bluetooth -> SOSEXY
+```text
+iOS / iPadOS：Bluefy -> Web Bluetooth -> SOSEXY
+Android：Chrome -> Web Bluetooth -> SOSEXY
+```
 
 这种情况下，真正用于蓝牙连接的是：
 ```
@@ -120,15 +123,21 @@ select public.pg('{
 - **Cloudflare Pages / Vercel**：连接 GitHub 仓库或上传文件夹；构建命令留空，发布目录使用根目录。
 - **自己的静态服务器**：例如 Nginx、对象存储静态站点等，只要能用 HTTPS 提供 `index.html`。
 
-不要直接用 `file://` 打开本地文件。Bluefy 的 Web Bluetooth 连接需要 HTTPS 页面环境。
+不要直接用 `file://` 打开本地文件。Web Bluetooth 连接需要 HTTPS 页面环境。
 
-## Bluefy 使用方式
+## 手机浏览器选择与使用方式
 
-1. 确认手机蓝牙已打开，设备在附近并处于可连接状态。
-2. 使用任意已部署的 HTTPS 地址在 Bluefy 中打开页面。
-3. 点击连接按钮，在系统设备选择框中选择 `SOSEXY`。
-4. 连接成功后再进行低强度测试；需要停止时优先使用页面上的 `STOP`。
-5. 控制过程中让 Bluefy 保持在前台，避免系统挂起页面。
+- **iOS / iPadOS**：使用 Bluefy 打开已部署的 HTTPS 页面。
+- **Android 备用机**：直接使用最新版 Chrome 打开同一个 HTTPS 页面，不需要安装 Bluefy。
+
+使用步骤：
+
+1. 确认手机蓝牙已打开，SOSEXY 在附近并处于可连接状态。
+2. 用对应浏览器打开已部署的 HTTPS 地址：iOS / iPadOS 用 Bluefy，Android 用 Chrome。
+3. 点击页面上的连接按钮；首次使用时，允许浏览器所需的蓝牙 / 附近设备权限。
+4. 在系统设备选择框中选择 `SOSEXY`。
+5. 连接成功后再进行低强度测试；需要停止时优先使用页面上的 `STOP`。
+6. 控制过程中让浏览器保持在前台，避免系统挂起页面或断开 BLE。
 
 ## 注意事项
 
